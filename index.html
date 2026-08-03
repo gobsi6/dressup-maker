@@ -699,7 +699,8 @@ const LS_CHARS = 'dressup_characters';
 const LS_COLORS = 'dressup_colors';
 const LS_HIDDEN = 'dressup_hidden';
 const LS_FAV = 'dressup_favcolors';
-const ALL_KEYS = [LS_CAT, LS_LIB, LS_POS, LS_BODY, LS_SEL, LS_CHARS, LS_COLORS, LS_HIDDEN, LS_FAV];
+const LS_PATTERNS = 'dressup_patterns';
+const ALL_KEYS = [LS_CAT, LS_LIB, LS_POS, LS_BODY, LS_SEL, LS_CHARS, LS_COLORS, LS_HIDDEN, LS_FAV, LS_PATTERNS];
 
 // localStorage caps out around 5-10MB, which full-resolution images blow through fast.
 // IndexedDB has a much larger quota (typically a share of free disk space), so all
@@ -756,6 +757,11 @@ let positions = {};
 let selected = {};
 let bodyDataURL = null;
 let favoriteColors = [];
+let patterns = {};
+
+function getPattern(itemId){
+  return patterns[itemId] || {};
+}
 
 async function loadAllFromDB(){
   const dbHasAny = await idbGet(LS_CAT);
@@ -769,9 +775,9 @@ async function loadAllFromDB(){
       }
     }
   }
-  const [cat, lib, pos, sel, col, hid, chr, body, fav] = await Promise.all([
+  const [cat, lib, pos, sel, col, hid, chr, body, fav, pat] = await Promise.all([
     idbGet(LS_CAT), idbGet(LS_LIB), idbGet(LS_POS), idbGet(LS_SEL),
-    idbGet(LS_COLORS), idbGet(LS_HIDDEN), idbGet(LS_CHARS), idbGet(LS_BODY), idbGet(LS_FAV)
+    idbGet(LS_COLORS), idbGet(LS_HIDDEN), idbGet(LS_CHARS), idbGet(LS_BODY), idbGet(LS_FAV), idbGet(LS_PATTERNS)
   ]);
   if(cat) categories = cat;
   if(lib) library = lib;
@@ -782,6 +788,30 @@ async function loadAllFromDB(){
   if(chr) characters = chr;
   if(body) bodyDataURL = body;
   if(fav) favoriteColors = fav;
+  if(pat) patterns = pat;
+
+  // One-time migration: older versions stored pattern info directly on each item.
+  // Move it into the shared `patterns` map (keyed by item id) so it can be
+  // saved/restored per character, same as colors already are.
+  let migrated = false;
+  for(const cat of categories){
+    for(const item of library[cat] || []){
+      if(item.patternDataURL && !patterns[item.id]){
+        patterns[item.id] = {
+          patternDataURL: item.patternDataURL,
+          patternColor: item.patternColor,
+          patternScale: item.patternScale,
+          patternIsCustom: item.patternIsCustom
+        };
+        delete item.patternDataURL;
+        delete item.patternColor;
+        delete item.patternScale;
+        delete item.patternIsCustom;
+        migrated = true;
+      }
+    }
+  }
+  if(migrated) saveAll();
 }
 
 let activeCat = null;
@@ -802,6 +832,7 @@ function saveAll(){
   idbSet(LS_COLORS, colors).catch(err => console.error('save failed', err));
   idbSet(LS_HIDDEN, hiddenCats).catch(err => console.error('save failed', err));
   idbSet(LS_FAV, favoriteColors).catch(err => console.error('save failed', err));
+  idbSet(LS_PATTERNS, patterns).catch(err => console.error('save failed', err));
   if(bodyDataURL) idbSet(LS_BODY, bodyDataURL).catch(err => console.error('save failed', err));
   else idbDelete(LS_BODY).catch(err => console.error('save failed', err));
   refreshStorageUsage();
@@ -870,6 +901,7 @@ async function saveCurrentAsCharacter(){
         selected: { ...selected },
         positions: JSON.parse(JSON.stringify(positions)),
         colors: JSON.parse(JSON.stringify(colors)),
+        patterns: JSON.parse(JSON.stringify(patterns)),
         thumb
       };
       const oldCharObj = characters[loadedCharacterId];
@@ -897,6 +929,7 @@ async function saveCurrentAsCharacter(){
     selected: { ...selected },
     positions: JSON.parse(JSON.stringify(positions)),
     colors: JSON.parse(JSON.stringify(colors)),
+    patterns: JSON.parse(JSON.stringify(patterns)),
     thumb
   };
   loadedCharacterId = id;
@@ -913,6 +946,7 @@ async function loadCharacter(id){
   selected = { ...c.selected };
   positions = JSON.parse(JSON.stringify(c.positions));
   colors = c.colors ? JSON.parse(JSON.stringify(c.colors)) : {};
+  patterns = c.patterns ? JSON.parse(JSON.stringify(c.patterns)) : {};
   for(const cat of categories){
     const itemId = selected[cat];
     if(itemId){
@@ -921,7 +955,7 @@ async function loadCharacter(id){
         await loadImg(item.dataURL);
         if(item.backDataURL) await loadImg(item.backDataURL);
         if(item.fillDataURL) await loadImg(item.fillDataURL);
-        if(item.patternDataURL) await loadImg(item.patternDataURL);
+        { const p = getPattern(item.id); if(p.patternDataURL) await loadImg(p.patternDataURL); }
       }
     }
   }
@@ -1035,19 +1069,21 @@ async function getFrontBackLayers(){
     if(item.fillDataURL){
       const fillImg = await loadImg(item.fillDataURL);
       let base = getLayerImage(itemId, fillImg, 'fill');
-      if(item.patternDataURL){
-        const rawPatternImg = await loadImg(item.patternDataURL);
-      const patternImg = item.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, item.patternColor || '#000000');
-        base = getPatternedLayerImage(itemId, 'fill', base, patternImg, item.patternScale || 1);
+      if(getPattern(item.id).patternDataURL){
+        const p = getPattern(item.id);
+        const rawPatternImg = await loadImg(p.patternDataURL);
+      const patternImg = p.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, p.patternColor || '#000000');
+        base = getPatternedLayerImage(itemId, 'fill', base, patternImg, p.patternScale || 1);
       }
       frontLayers.push({ cat, itemId, img: base, ...pos });
       frontLayers.push({ cat, itemId, img, ...pos });
     } else {
       let base = getLayerImage(itemId, img, 'front');
-      if(item.patternDataURL){
-        const rawPatternImg = await loadImg(item.patternDataURL);
-      const patternImg = item.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, item.patternColor || '#000000');
-        base = getPatternedLayerImage(itemId, 'front', base, patternImg, item.patternScale || 1);
+      if(getPattern(item.id).patternDataURL){
+        const p = getPattern(item.id);
+        const rawPatternImg = await loadImg(p.patternDataURL);
+      const patternImg = p.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, p.patternColor || '#000000');
+        base = getPatternedLayerImage(itemId, 'front', base, patternImg, p.patternScale || 1);
       }
       frontLayers.push({ cat, itemId, img: base, ...pos });
     }
@@ -1383,7 +1419,8 @@ async function ensureCrop(item){
 
 async function getThumbDisplay(item){
   const color = colors[item.id];
-  const key = item.id + ':' + (color || '') + (item.fillDataURL ? ':split' : '') + (item.patternDataURL ? (':pat:' + (item.patternScale || 1)) : '');
+  const pat = getPattern(item.id);
+  const key = item.id + ':' + (color || '') + (item.fillDataURL ? ':split' : '') + (pat.patternDataURL ? (':pat:' + (pat.patternScale || 1) + ':' + (pat.patternColor || '')) : '');
   if(thumbDisplayCache[key]) return thumbDisplayCache[key];
   const lineCrop = await ensureCrop(item);
   let finalCanvas;
@@ -1392,10 +1429,10 @@ async function getThumbDisplay(item){
     const fillImg = await loadImg(item.fillDataURL);
     const fillCrop = cropImageToCanvas(fillImg, b);
     let tintedFill = isTintColor(color) ? tintCanvas(fillCrop, color, b.w, b.h) : fillCrop;
-    if(item.patternDataURL){
-      const rawPatternImg = await loadImg(item.patternDataURL);
-      const patternImg = item.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, item.patternColor || '#000000');
-      tintedFill = patternMultiply(tintedFill, patternImg, item.patternScale || 1);
+    if(pat.patternDataURL){
+      const rawPatternImg = await loadImg(pat.patternDataURL);
+      const patternImg = pat.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, pat.patternColor || '#000000');
+      tintedFill = patternMultiply(tintedFill, patternImg, pat.patternScale || 1);
     }
     const c = document.createElement('canvas');
     c.width = b.w; c.height = b.h;
@@ -1405,10 +1442,10 @@ async function getThumbDisplay(item){
     finalCanvas = c;
   } else {
     finalCanvas = isTintColor(color) ? tintCanvas(lineCrop, color, lineCrop.width, lineCrop.height) : lineCrop;
-    if(item.patternDataURL){
-      const rawPatternImg = await loadImg(item.patternDataURL);
-      const patternImg = item.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, item.patternColor || '#000000');
-      finalCanvas = patternMultiply(finalCanvas, patternImg, item.patternScale || 1);
+    if(pat.patternDataURL){
+      const rawPatternImg = await loadImg(pat.patternDataURL);
+      const patternImg = pat.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, pat.patternColor || '#000000');
+      finalCanvas = patternMultiply(finalCanvas, patternImg, pat.patternScale || 1);
     }
   }
   const url = finalCanvas.toDataURL('image/png');
@@ -1548,10 +1585,12 @@ function duplicateItem(item, cat){
   const newId = 'i' + Date.now() + Math.random().toString(36).slice(2, 7);
   const clone = { ...item, id: newId };
   const copiedColor = colors[item.id];
+  const copiedPattern = patterns[item.id];
 
   const doAdd = () => {
     library[cat].splice(idx + 1, 0, clone);
     if(copiedColor) colors[newId] = copiedColor;
+    if(copiedPattern) patterns[newId] = { ...copiedPattern };
     saveAll();
     renderCatTabs();
     renderThumbs();
@@ -1560,6 +1599,7 @@ function duplicateItem(item, cat){
     library[cat] = library[cat].filter(i => i.id !== newId);
     delete colors[newId];
     delete positions[newId];
+    delete patterns[newId];
     saveAll();
     renderCatTabs();
     renderThumbs();
@@ -1570,8 +1610,7 @@ function duplicateItem(item, cat){
 }
 
 async function applyPatternToItem(item, dataURL){
-  item.patternDataURL = dataURL;
-  item.patternIsCustom = false;
+  patterns[item.id] = { ...patterns[item.id], patternDataURL: dataURL, patternIsCustom: false };
   await loadImg(dataURL);
   invalidateItemCaches(item.id);
   saveAll();
@@ -1580,8 +1619,7 @@ async function applyPatternToItem(item, dataURL){
 }
 
 async function removePatternFromItem(item){
-  delete item.patternDataURL;
-  delete item.patternColor;
+  delete patterns[item.id];
   invalidateItemCaches(item.id);
   saveAll();
   renderThumbs();
@@ -1596,7 +1634,9 @@ function openPatternPresetPopup(item, rect){
   pop.style.left = Math.min(rect.left, window.innerWidth - 210) + 'px';
   pop.onclick = ev => ev.stopPropagation();
 
-  if(item.patternDataURL && !item.patternIsCustom){
+  const pat = getPattern(item.id);
+
+  if(pat.patternDataURL && !pat.patternIsCustom){
     const colorRow = document.createElement('div');
     colorRow.className = 'pattern-color-row';
     const colorLabel = document.createElement('span');
@@ -1604,9 +1644,9 @@ function openPatternPresetPopup(item, rect){
     const patColorInput = document.createElement('input');
     patColorInput.type = 'color';
     patColorInput.className = 'pattern-color-input';
-    patColorInput.value = item.patternColor || '#000000';
+    patColorInput.value = pat.patternColor || '#000000';
     patColorInput.oninput = (e) => {
-      item.patternColor = e.target.value;
+      patterns[item.id] = { ...patterns[item.id], patternColor: e.target.value };
       invalidateItemCaches(item.id);
       render();
     };
@@ -1619,7 +1659,7 @@ function openPatternPresetPopup(item, rect){
     pop.appendChild(colorRow);
   }
 
-  if(item.patternDataURL){
+  if(pat.patternDataURL){
     const scaleRow = document.createElement('div');
     scaleRow.className = 'pattern-color-row';
     const scaleLabel = document.createElement('span');
@@ -1630,9 +1670,9 @@ function openPatternPresetPopup(item, rect){
     scaleInput.min = '0.2';
     scaleInput.max = '3';
     scaleInput.step = '0.05';
-    scaleInput.value = item.patternScale || 1;
+    scaleInput.value = pat.patternScale || 1;
     scaleInput.oninput = (e) => {
-      item.patternScale = parseFloat(e.target.value);
+      patterns[item.id] = { ...patterns[item.id], patternScale: parseFloat(e.target.value) };
       invalidateItemCaches(item.id);
       render();
     };
@@ -1649,7 +1689,7 @@ function openPatternPresetPopup(item, rect){
   presetRow.className = 'preset-row';
   PATTERN_PRESETS.forEach(preset => {
     const dataURL = preset.gen();
-    const isActive = item.patternDataURL === dataURL;
+    const isActive = pat.patternDataURL === dataURL;
     const btn = document.createElement('button');
     btn.className = 'pattern-preset-btn' + (isActive ? ' active' : '');
     btn.style.backgroundImage = `url(${dataURL})`;
@@ -1677,7 +1717,7 @@ function openPatternPresetPopup(item, rect){
   };
   pop.appendChild(uploadBtn);
 
-  if(item.patternDataURL){
+  if(pat.patternDataURL){
     const removeBtn = document.createElement('button');
     removeBtn.className = 'item-menu-row danger';
     removeBtn.innerHTML = TRASH_ICON + '<span>패턴 제거</span>';
@@ -1767,12 +1807,14 @@ function renderThumbs(){
       const wasSelected = selected[cat] === item.id;
       const oldPos = positions[item.id];
       const oldColor = colors[item.id];
+      const oldPattern = patterns[item.id];
 
       const doDelete = () => {
         library[cat] = library[cat].filter(i => i.id !== item.id);
         if(selected[cat] === item.id) delete selected[cat];
         delete positions[item.id];
         delete colors[item.id];
+        delete patterns[item.id];
         delete cropCache[item.id];
         delete cropBoundsCache[item.id];
         invalidateItemCaches(item.id);
@@ -1786,6 +1828,7 @@ function renderThumbs(){
           if(wasSelected) selected[cat] = item.id;
           if(oldPos) positions[item.id] = oldPos;
           if(oldColor) colors[item.id] = oldColor;
+          if(oldPattern) patterns[item.id] = oldPattern;
           saveAll();
           renderCatTabs(); renderThumbs(); render();
         },
@@ -1822,7 +1865,7 @@ function renderThumbs(){
     };
 
     const moreBtn = document.createElement('button');
-    moreBtn.className = 'more-btn' + ((item.backDataURL || item.fillDataURL || item.patternDataURL) ? ' has-extra' : '');
+    moreBtn.className = 'more-btn' + ((item.backDataURL || item.fillDataURL || getPattern(item.id).patternDataURL) ? ' has-extra' : '');
     moreBtn.innerHTML = MORE_ICON;
     moreBtn.title = '더보기';
     moreBtn.onclick = (e) => {
@@ -2149,9 +2192,7 @@ document.getElementById('patternLayerInput').onchange = async (e) => {
     if(it){ found = it; break; }
   }
   if(found){
-    found.patternDataURL = dataURL;
-    found.patternIsCustom = true;
-    delete found.patternColor;
+    patterns[found.id] = { patternDataURL: dataURL, patternIsCustom: true };
     await loadImg(dataURL);
     invalidateItemCaches(targetId);
     saveAll();
@@ -2209,7 +2250,7 @@ document.getElementById('exportDataBtn').onclick = () => {
     type: 'dressup-maker-backup',
     version: 1,
     exportedAt: new Date().toISOString(),
-    categories, library, positions, selected, colors, hiddenCats, characters, favoriteColors,
+    categories, library, positions, selected, colors, hiddenCats, characters, favoriteColors, patterns,
     body: bodyDataURL
   };
   const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
@@ -2244,6 +2285,7 @@ document.getElementById('importDataInput').onchange = async (e) => {
   selected = data.selected || {};
   colors = data.colors || {};
   hiddenCats = data.hiddenCats || {};
+  patterns = data.patterns || {};
   characters = { ...characters, ...(data.characters || {}) };
   favoriteColors = [...new Set([...favoriteColors, ...(data.favoriteColors || [])])].slice(0, 12);
   bodyDataURL = data.body || null;
@@ -2259,13 +2301,15 @@ document.getElementById('importDataInput').onchange = async (e) => {
   Object.keys(cropBoundsCache).forEach(k => delete cropBoundsCache[k]);
   Object.keys(thumbDisplayCache).forEach(k => delete thumbDisplayCache[k]);
   Object.keys(layerTintCache).forEach(k => delete layerTintCache[k]);
+  Object.keys(patternedCache).forEach(k => delete patternedCache[k]);
+  Object.keys(recoloredPatternCache).forEach(k => delete recoloredPatternCache[k]);
 
   for(const cat of categories){
     for(const item of library[cat] || []){
       await loadImg(item.dataURL);
       if(item.backDataURL) await loadImg(item.backDataURL);
       if(item.fillDataURL) await loadImg(item.fillDataURL);
-      if(item.patternDataURL) await loadImg(item.patternDataURL);
+      { const p = getPattern(item.id); if(p.patternDataURL) await loadImg(p.patternDataURL); }
     }
   }
 
@@ -2406,7 +2450,7 @@ window.addEventListener('touchend', endDrag);
       await loadImg(item.dataURL);
       if(item.backDataURL) await loadImg(item.backDataURL);
       if(item.fillDataURL) await loadImg(item.fillDataURL);
-      if(item.patternDataURL) await loadImg(item.patternDataURL);
+      { const p = getPattern(item.id); if(p.patternDataURL) await loadImg(p.patternDataURL); }
     }
   }
   renderCatTabs();
