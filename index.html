@@ -1,0 +1,2421 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>옷갈아입히기 메이커</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='12' fill='%23f8f5ee'/%3E%3Cpath d='M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23Z' fill='%23a68a5f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #faf9f5;
+    --panel: #ffffff;
+    --panel-2: #f4f2ec;
+    --line: #e9e5d9;
+    --text: #46433c;
+    --text-dim: #aeaa9f;
+    --accent: #b3a58c;
+    --accent-dim: #e7e1d3;
+    --danger: #af6058;
+    --shadow: 0 10px 30px -14px rgba(58,53,44,0.14);
+    --shadow-sm: 0 4px 14px -8px rgba(58,53,44,0.11);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 12% 8%, #fdfcf9 0%, transparent 45%),
+      radial-gradient(circle at 90% 88%, #f4f1e9 0%, transparent 50%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+  }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:40px 28px 60px; }
+
+  header{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    gap:10px;
+    margin-bottom:34px;
+  }
+  header .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:3px;
+    color:var(--accent);
+    background:var(--panel-2);
+    border:1px solid var(--accent-dim);
+    border-radius:999px;
+    padding:6px 16px;
+    transform:rotate(-1.5deg);
+  }
+  header h1{
+    font-family:'Jua', sans-serif;
+    font-weight:400;
+    font-size:42px;
+    margin:2px 0 0;
+    letter-spacing:0.3px;
+  }
+
+  header p.sub{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+    letter-spacing:1.5px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    margin:0;
+  }
+
+  .layout{
+    display:grid;
+    grid-template-columns:300px 1fr 300px;
+    gap:24px;
+    align-items:start;
+  }
+  @media (max-width: 1200px){
+    .layout{ grid-template-columns:280px 1fr; }
+    .items-panel{ grid-column:1 / -1; }
+  }
+  @media (max-width: 900px){
+    .layout{ grid-template-columns:1fr; }
+    .items-panel{ grid-column:auto; }
+  }
+
+  .card{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:22px;
+    box-shadow:var(--shadow-sm);
+    padding:22px;
+  }
+
+  .sidebar{
+    display:flex;
+    flex-direction:column;
+    gap:22px;
+  }
+
+  .section-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:1.5px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    margin:0 0 12px;
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  .section-label::after{
+    content:'';
+    flex:1;
+    height:0;
+    border-top:1px dashed var(--line);
+  }
+
+
+  .btn{
+    font-family:'Inter',sans-serif;
+    font-size:13px;
+    font-weight:500;
+    background:var(--panel);
+    color:var(--text);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:9px 18px;
+    cursor:pointer;
+    transition:border-color .15s, color .15s, background .15s, transform .1s;
+  }
+  .btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .btn:active{ transform:scale(0.97); }
+  .btn.small{ font-size:11px; padding:6px 13px; }
+  .btn.block{ width:100%; }
+  .btn.primary{ border-color:var(--accent); color:#fff; background:var(--accent); box-shadow:var(--shadow-sm); }
+  .btn.primary:hover{ background:var(--danger); border-color:var(--danger); color:#fff; }
+  .btn.icon-only{
+    width:38px; height:38px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .btn:disabled{
+    opacity:0.35;
+    cursor:default;
+    pointer-events:none;
+  }
+  input[type=file]{ display:none; }
+
+  .icon-btn-row{
+    display:flex;
+    gap:8px;
+  }
+  .icon-btn-lg{
+    flex:1;
+    height:40px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:14px;
+    color:var(--text);
+    cursor:pointer;
+    padding:0;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .icon-btn-lg:hover{ border-color:var(--accent); color:var(--accent); background:var(--panel); }
+  .icon-btn-lg.primary{ background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:var(--shadow-sm); }
+  .icon-btn-lg.primary:hover{ background:var(--danger); border-color:var(--danger); color:#fff; }
+  .icon-btn-lg svg{ width:20px; height:20px; }
+  .icon-btn-wrap{
+    position:relative;
+    flex:1;
+  }
+  .icon-btn-wrap .icon-btn-lg{
+    width:100%;
+  }
+  .icon-btn-badge{
+    position:absolute;
+    top:-5px; right:-5px;
+    width:16px; height:16px;
+    border-radius:50%;
+    background:#fff;
+    color:var(--text-dim);
+    border:1.5px solid var(--panel);
+    box-shadow:0 0 0 1px var(--line);
+    font-size:10px;
+    line-height:1;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    padding:0;
+    transition:background .15s, color .15s;
+  }
+  .icon-btn-badge:hover{
+    background:var(--danger);
+    color:#fff;
+  }
+
+  .storage-usage{
+    margin-top:14px;
+  }
+  .storage-bar{
+    width:100%;
+    height:6px;
+    border-radius:999px;
+    background:var(--panel-2);
+    overflow:hidden;
+  }
+  .storage-bar-fill{
+    height:100%;
+    width:0%;
+    background:var(--accent);
+    border-radius:999px;
+    transition:width .3s;
+  }
+  .storage-text{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color:var(--text-dim);
+    margin:6px 0 0;
+    text-align:center;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .cat-scroller{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  .cat-tab-row{
+    display:flex; align-items:center; gap:2px; width:100%;
+    background:var(--panel-2);
+    border:1.5px solid transparent;
+    border-radius:12px;
+    padding:4px 4px 4px 8px;
+    cursor:grab;
+    transition:opacity .15s, outline-color .15s;
+  }
+  .cat-tab-row.active{
+    background:#fff;
+    border-color:var(--accent);
+    box-shadow:var(--shadow-sm);
+  }
+  .cat-tab-row.dragging{ opacity:0.35; }
+  .cat-tab-row.drag-over{
+    outline:2px dashed var(--accent);
+    outline-offset:2px;
+  }
+  .cat-tab{
+    flex:1;
+    min-width:0;
+    text-align:left;
+    background:none;
+    border:none;
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    padding:9px 2px;
+    cursor:pointer;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .cat-tab-row.active .cat-tab{ color:var(--accent); }
+  .cat-tab .count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    color:var(--text-dim);
+    margin-left:4px;
+  }
+  .cat-tab-row.active .cat-tab .count{ color:var(--accent-dim); }
+  .cat-tab-edit{
+    flex:1;
+    min-width:0;
+    font-family:'Inter', sans-serif;
+    font-size:13px;
+    font-weight:500;
+    color:var(--text);
+    background:#fff;
+    border:1px solid var(--accent);
+    border-radius:8px;
+    padding:7px 8px;
+  }
+  .cat-icon-btn{
+    flex-shrink:0;
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    cursor:pointer;
+    font-size:12px;
+    width:20px; height:20px;
+    display:flex; align-items:center; justify-content:center;
+    border-radius:50%;
+    padding:0;
+  }
+  .cat-icon-btn:hover{ color:var(--danger); background:var(--panel); }
+  .cat-icon-btn.vis-toggle:hover{ color:var(--accent); }
+  .cat-tab-row.hidden-cat{ opacity:0.55; }
+  .cat-tab-row.hidden-cat .vis-toggle{ color:var(--accent); }
+
+  .thumb-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+    margin-top:14px;
+  }
+
+  .char-grid{
+    display:grid;
+    grid-template-columns:repeat(3, 1fr);
+    gap:10px;
+    margin-top:14px;
+  }
+  .char-item{
+    position:relative;
+    cursor:pointer;
+    text-align:center;
+  }
+  .char-thumb{
+    aspect-ratio:1/1;
+    border:1px solid var(--line);
+    border-radius:12px;
+    overflow:hidden;
+    background:#f4f2ec;
+    transition:transform .12s, box-shadow .12s;
+  }
+  .char-item:hover .char-thumb{ transform:translateY(-2px); box-shadow:var(--shadow-sm); }
+  .char-item.active .char-thumb{ outline:2.5px solid var(--accent); outline-offset:2px; }
+  .char-thumb img{ width:100%; height:100%; object-fit:cover; object-position:top; display:block; }
+  .char-name{
+    font-size:11px;
+    color:var(--text-dim);
+    margin-top:5px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .char-del{
+    position:absolute; top:4px; right:4px;
+    background:rgba(58,53,44,0.6); color:#fff; border:none;
+    border-radius:50%;
+    font-size:11px; width:18px; height:18px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; opacity:0; transition:opacity .15s;
+  }
+  .char-item:hover .char-del{ opacity:1; }
+  .empty-hint{
+    font-size:11.5px;
+    color:var(--text-dim);
+    text-align:center;
+    margin:12px 0 2px;
+  }
+  .thumb{
+    position:relative;
+    aspect-ratio:1;
+    border:1px solid var(--line);
+    border-radius:14px;
+    overflow:hidden;
+    background:
+      linear-gradient(45deg, #eae4d5 25%, transparent 25%) -6px 0/12px 12px,
+      linear-gradient(-45deg, #eae4d5 25%, transparent 25%) -6px 0/12px 12px,
+      linear-gradient(45deg, transparent 75%, #eae4d5 75%) 0 0/12px 12px,
+      linear-gradient(-45deg, transparent 75%, #eae4d5 75%) 0 0/12px 12px,
+      #fdf3ec;
+    cursor:pointer;
+    transition:transform .12s, box-shadow .12s;
+  }
+  .thumb:hover{ transform:translateY(-2px); box-shadow:var(--shadow-sm); }
+  .thumb img{ width:100%; height:100%; object-fit:contain; display:block; }
+  .thumb.selected{ outline:2.5px solid var(--accent); outline-offset:-2.5px; }
+  .thumb.dragging{ opacity:0.35; }
+  .thumb.drag-over{ outline:2px dashed var(--accent); outline-offset:2px; }
+  .thumb .more-btn{
+    position:absolute; top:2px; right:4px;
+    background:rgba(74,51,42,0.65); color:#fff; border:none;
+    border-radius:50%;
+    width:18px; height:18px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; opacity:0; transition:opacity .15s, background .15s;
+  }
+  .thumb:hover .more-btn{ opacity:1; }
+  .thumb .more-btn.has-extra{ opacity:1; background:var(--accent); }
+  .item-menu{
+    position:fixed;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    box-shadow:var(--shadow);
+    padding:6px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    z-index:1000;
+    min-width:172px;
+  }
+  .item-menu-row{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    background:none;
+    border:none;
+    padding:8px 10px;
+    border-radius:8px;
+    font-family:'Inter', sans-serif;
+    font-size:12.5px;
+    color:var(--text);
+    cursor:pointer;
+    text-align:left;
+    width:100%;
+  }
+  .item-menu-row:hover{ background:var(--panel-2); }
+  .item-menu-row.danger{ color:var(--danger); }
+  .item-menu-row.danger:hover{ background:rgba(175,96,88,0.12); }
+  .item-menu-row svg{ flex-shrink:0; }
+  .thumb .fav-open-btn{
+    position:absolute; bottom:5px; right:4px;
+    background:rgba(74,51,42,0.65); color:#fff; border:none;
+    border-radius:50%;
+    width:18px; height:18px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; opacity:0; transition:opacity .15s;
+  }
+  .thumb:hover .fav-open-btn{ opacity:1; }
+  .fav-popup{
+    position:fixed;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:12px;
+    box-shadow:var(--shadow);
+    padding:10px;
+    z-index:1000;
+    display:flex;
+    flex-wrap:wrap;
+    gap:7px;
+    max-width:160px;
+  }
+  .fav-popup .fav-swatch{
+    position:relative;
+    width:22px; height:22px;
+    border-radius:50%;
+    border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--line);
+    cursor:pointer;
+    padding:0;
+  }
+  .fav-popup .fav-remove{
+    position:absolute; top:-5px; right:-5px;
+    width:14px; height:14px;
+    border-radius:50%;
+    background:var(--danger); color:#fff; border:1px solid #fff;
+    font-size:9px;
+    display:none;
+    align-items:center; justify-content:center;
+    padding:0;
+    cursor:pointer;
+  }
+  .fav-popup .fav-swatch:hover .fav-remove{ display:flex; }
+  .fav-popup-empty{
+    font-size:11px;
+    line-height:1.5;
+    color:var(--text-dim);
+    width:150px;
+  }
+  .pattern-popup{
+    flex-direction:column;
+    max-width:200px;
+  }
+  .pattern-popup .preset-row{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  .pattern-preset-btn{
+    width:34px; height:34px;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background-repeat:repeat;
+    background-size:12px 12px;
+    background-color:#fff;
+    cursor:pointer;
+    padding:0;
+  }
+  .pattern-preset-btn:hover{ border-color:var(--accent); box-shadow:var(--shadow-sm); }
+  .pattern-preset-btn.active{ border:2px solid var(--accent); box-shadow:var(--shadow-sm); }
+  .pattern-color-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:4px 2px 10px;
+    margin-bottom:8px;
+    border-bottom:1px dashed var(--line);
+    font-size:12px;
+    color:var(--text-dim);
+  }
+  .pattern-color-input{
+    width:20px; height:20px;
+    border-radius:50%;
+    border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--line);
+    padding:0;
+    cursor:pointer;
+    background:none;
+    -webkit-appearance:none;
+    appearance:none;
+  }
+  .pattern-color-input::-webkit-color-swatch-wrapper{ padding:0; border-radius:50%; }
+  .pattern-color-input::-webkit-color-swatch{ border:none; border-radius:50%; }
+  .pattern-color-input::-moz-color-swatch{ border:none; border-radius:50%; }
+  .pattern-scale-input{
+    width:100px;
+    accent-color:var(--accent);
+  }
+  .thumb .colorpick{
+    position:absolute; bottom:5px; left:5px;
+    width:19px; height:19px;
+    border-radius:50%;
+    border:2px solid #fff;
+    box-shadow:0 0 0 1px var(--line);
+    padding:0;
+    cursor:pointer;
+    background:none;
+    -webkit-appearance:none;
+    appearance:none;
+  }
+  .thumb .colorpick::-webkit-color-swatch-wrapper{ padding:0; border-radius:50%; }
+  .thumb .colorpick::-webkit-color-swatch{ border:none; border-radius:50%; }
+  .thumb .colorpick::-moz-color-swatch{ border:none; border-radius:50%; }
+  .thumb .color-reset{
+    position:absolute; bottom:4px; left:30px;
+    background:rgba(74,51,42,0.65); color:#fff; border:none;
+    border-radius:50%;
+    width:20px; height:20px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; opacity:0; transition:opacity .15s;
+  }
+  .thumb:hover .color-reset{ opacity:1; }
+  .thumb.add-new{
+    display:flex; align-items:center; justify-content:center;
+    color:var(--accent); font-size:24px; font-weight:300;
+    background:var(--panel-2);
+  }
+  .thumb.add-new:hover{ background:var(--panel); }
+
+  .stage-card{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:18px;
+    padding:32px 22px;
+  }
+  .stage-toolbar{
+    display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+  }
+  .mirror-frame{
+    padding:14px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:26px;
+    box-shadow:var(--shadow);
+  }
+  #stage{
+    display:block;
+    background:#f4f2ec;
+    border:1px solid var(--line);
+    border-radius:16px;
+    max-width:100%;
+    max-height:78vh;
+    width:auto;
+    height:auto;
+    touch-action:none;
+    cursor:grab;
+  }
+  #stage.dragging{ cursor:grabbing; }
+  .hint{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:var(--text-dim);
+    letter-spacing:0.3px;
+    text-align:center;
+    max-width:460px;
+    word-break:keep-all;
+    line-height:1.6;
+  }
+
+  footer{
+    text-align:center;
+    margin-top:46px;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:1.5px;
+    color:var(--text-dim);
+    text-transform:uppercase;
+  }
+  footer a{
+    color:var(--accent);
+    text-decoration:none;
+    border-bottom:1px dotted var(--accent-dim);
+  }
+  footer a:hover{
+    color:var(--danger);
+    border-bottom-color:var(--danger);
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">atelier · v1.2</div>
+    <h1>옷갈아입히기 메이커</h1>
+    <p class="sub">fitting room · dress up your own images</p>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="card">
+        <div class="section-label">베이스 인물 / 데이터</div>
+        <div class="icon-btn-row">
+          <div class="icon-btn-wrap">
+            <button class="icon-btn-lg primary" id="bodyUploadBtn" title="인물 업로드">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+            </button>
+            <button class="icon-btn-badge" id="bodyDeleteBtn" title="삭제" style="display:none;">×</button>
+          </div>
+          <button class="icon-btn-lg" id="exportDataBtn" title="내보내기">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg>
+          </button>
+          <button class="icon-btn-lg" id="importDataBtn" title="가져오기">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+          </button>
+        </div>
+        <input type="file" id="bodyFileInput" accept="image/*">
+        <input type="file" id="importDataInput" accept="application/json">
+        <div class="storage-usage" id="storageUsage">
+          <div class="storage-bar"><div class="storage-bar-fill" id="storageBarFill"></div></div>
+          <p class="storage-text" id="storageText">저장 공간 확인 중...</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-label">캐릭터 저장 / 불러오기</div>
+        <button class="btn block" id="saveCharBtn">현재 캐릭터로 저장</button>
+        <div class="char-grid" id="charGrid"></div>
+        <p class="empty-hint" id="charEmptyHint">저장된 캐릭터가 아직 없어요.</p>
+      </div>
+
+      <div class="card">
+        <div class="section-label">카테고리</div>
+        <div class="cat-scroller" id="catTabs"></div>
+        <button class="btn small" style="margin-top:12px;" id="addCatBtn">+ 카테고리 추가</button>
+      </div>
+    </aside>
+
+    <main class="card stage-card">
+      <div class="stage-toolbar">
+        <button class="btn icon-only" id="undoBtn" title="실행취소 (Ctrl+Z)" disabled>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M3 13a9 9 0 1 1 3 6.7"/></svg>
+        </button>
+        <button class="btn icon-only" id="redoBtn" title="다시 실행 (Ctrl+Shift+Z)" disabled>
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 0-3 6.7"/></svg>
+        </button>
+        <button class="btn" id="resetBtn">전체 초기화</button>
+        <button class="btn primary" id="exportBtn">PNG로 저장</button>
+      </div>
+      <div class="mirror-frame">
+        <canvas id="stage" width="480" height="640"></canvas>
+      </div>
+      <div class="hint">아이템을 클릭해 입히고, 캔버스에서 드래그로 위치를 조절하세요.<br>같은 아이템을 다시 클릭하면 벗겨집니다.</div>
+    </main>
+
+    <aside class="card items-panel">
+      <div class="section-label" id="thumbLabel">아이템</div>
+      <div class="thumb-grid" id="thumbGrid"></div>
+      <input type="file" id="itemFileInput" accept="image/*" multiple>
+      <input type="file" id="backLayerInput" accept="image/*">
+      <input type="file" id="fillLayerInput" accept="image/*">
+      <input type="file" id="patternLayerInput" accept="image/*">
+      <input type="file" id="editItemInput" accept="image/*">
+    </aside>
+  </div>
+
+  <footer>Created by <a href="https://x.com/gobsi6" target="_blank" rel="noopener noreferrer">@gobsi6</a></footer>
+</div>
+
+<script>
+const LS_CAT = 'dressup_categories';
+const LS_LIB = 'dressup_library';
+const LS_POS = 'dressup_positions';
+const LS_BODY = 'dressup_body';
+const LS_SEL = 'dressup_selected';
+const LS_CHARS = 'dressup_characters';
+const LS_COLORS = 'dressup_colors';
+const LS_HIDDEN = 'dressup_hidden';
+const LS_FAV = 'dressup_favcolors';
+const ALL_KEYS = [LS_CAT, LS_LIB, LS_POS, LS_BODY, LS_SEL, LS_CHARS, LS_COLORS, LS_HIDDEN, LS_FAV];
+
+// localStorage caps out around 5-10MB, which full-resolution images blow through fast.
+// IndexedDB has a much larger quota (typically a share of free disk space), so all
+// app data lives there instead. Existing localStorage data (from before this change)
+// is migrated in automatically the first time the page loads.
+const IDB_NAME = 'dressupMakerDB';
+const IDB_STORE = 'kv';
+
+function openIDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGet(key){
+  const db = await openIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(key, value){
+  const db = await openIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbDelete(key){
+  const db = await openIDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+let characters = {};
+let colors = {};
+let hiddenCats = {};
+let categories = ['상의','하의','아우터','신발','헤어','액세서리'];
+let library = {};
+let positions = {};
+let selected = {};
+let bodyDataURL = null;
+let favoriteColors = [];
+
+async function loadAllFromDB(){
+  const dbHasAny = await idbGet(LS_CAT);
+  if(dbHasAny === undefined){
+    // First run on IndexedDB - migrate any legacy localStorage data over.
+    for(const key of ALL_KEYS){
+      const raw = localStorage.getItem(key);
+      if(raw !== null){
+        try { await idbSet(key, JSON.parse(raw)); }
+        catch(err) { await idbSet(key, raw); }
+      }
+    }
+  }
+  const [cat, lib, pos, sel, col, hid, chr, body, fav] = await Promise.all([
+    idbGet(LS_CAT), idbGet(LS_LIB), idbGet(LS_POS), idbGet(LS_SEL),
+    idbGet(LS_COLORS), idbGet(LS_HIDDEN), idbGet(LS_CHARS), idbGet(LS_BODY), idbGet(LS_FAV)
+  ]);
+  if(cat) categories = cat;
+  if(lib) library = lib;
+  if(pos) positions = pos;
+  if(sel) selected = sel;
+  if(col) colors = col;
+  if(hid) hiddenCats = hid;
+  if(chr) characters = chr;
+  if(body) bodyDataURL = body;
+  if(fav) favoriteColors = fav;
+}
+
+let activeCat = null;
+const imgCache = {};
+let bodyImg = null;
+
+const canvas = document.getElementById('stage');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = 'high';
+
+
+function saveAll(){
+  idbSet(LS_CAT, categories).catch(err => console.error('save failed', err));
+  idbSet(LS_LIB, library).catch(err => console.error('save failed', err));
+  idbSet(LS_POS, positions).catch(err => console.error('save failed', err));
+  idbSet(LS_SEL, selected).catch(err => console.error('save failed', err));
+  idbSet(LS_COLORS, colors).catch(err => console.error('save failed', err));
+  idbSet(LS_HIDDEN, hiddenCats).catch(err => console.error('save failed', err));
+  idbSet(LS_FAV, favoriteColors).catch(err => console.error('save failed', err));
+  if(bodyDataURL) idbSet(LS_BODY, bodyDataURL).catch(err => console.error('save failed', err));
+  else idbDelete(LS_BODY).catch(err => console.error('save failed', err));
+  refreshStorageUsage();
+}
+
+function saveCharacters(){
+  idbSet(LS_CHARS, characters).catch(err => console.error('save failed', err));
+  refreshStorageUsage();
+}
+
+function formatBytes(bytes){
+  if(bytes < 1024) return bytes + ' B';
+  if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  if(bytes < 1024*1024*1024) return (bytes/1024/1024).toFixed(1) + ' MB';
+  return (bytes/1024/1024/1024).toFixed(2) + ' GB';
+}
+
+async function refreshStorageUsage(){
+  const textEl = document.getElementById('storageText');
+  const fillEl = document.getElementById('storageBarFill');
+  if(!textEl || !fillEl) return;
+  if(!navigator.storage || !navigator.storage.estimate){
+    textEl.textContent = '이 브라우저에서는 저장 용량을 확인할 수 없어요.';
+    return;
+  }
+  try{
+    const { usage, quota } = await navigator.storage.estimate();
+    const pct = quota ? Math.min(100, (usage/quota)*100) : 0;
+    fillEl.style.width = pct + '%';
+    textEl.textContent = `${formatBytes(usage)} 사용 · ${formatBytes(Math.max(0, quota-usage))} 여유`;
+  } catch(err){
+    textEl.textContent = '저장 용량을 확인하지 못했어요.';
+  }
+}
+
+function makeThumbnail(dataURL, maxDim){
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => {
+      let w = im.width, h = im.height;
+      const scale = maxDim / Math.max(w,h);
+      if(scale < 1){ w *= scale; h *= scale; }
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      c.getContext('2d').drawImage(im, 0, 0, w, h);
+      resolve(c.toDataURL('image/png'));
+    };
+    im.src = dataURL;
+  });
+}
+
+let loadedCharacterId = null;
+
+async function saveCurrentAsCharacter(){
+  if(!bodyDataURL){ alert('먼저 베이스 인물 이미지를 업로드해주세요.'); return; }
+
+  if(loadedCharacterId && characters[loadedCharacterId]){
+    const existingName = characters[loadedCharacterId].name;
+    const wantsOverwrite = confirm(`지금 "${existingName}" 캐릭터를 불러온 상태예요. 이 캐릭터를 업데이트할까요?\n(취소를 누르면 새 캐릭터로 저장해요)`);
+    if(wantsOverwrite){
+      await render();
+      const thumb = await makeThumbnail(canvas.toDataURL('image/png'), 260);
+      const newCharObj = {
+        name: existingName,
+        body: bodyDataURL,
+        selected: { ...selected },
+        positions: JSON.parse(JSON.stringify(positions)),
+        colors: JSON.parse(JSON.stringify(colors)),
+        thumb
+      };
+      const oldCharObj = characters[loadedCharacterId];
+      const targetId = loadedCharacterId;
+      characters[targetId] = newCharObj;
+      saveCharacters();
+      renderChars();
+      pushUndo({
+        undo: () => { characters[targetId] = oldCharObj; saveCharacters(); renderChars(); },
+        redo: () => { characters[targetId] = newCharObj; saveCharacters(); renderChars(); }
+      });
+      return;
+    }
+  }
+
+  const defaultName = `캐릭터 ${Object.keys(characters).length + 1}`;
+  const name = prompt('캐릭터 이름을 입력하세요', defaultName);
+  if(!name) return;
+  await render();
+  const thumb = await makeThumbnail(canvas.toDataURL('image/png'), 260);
+  const id = 'c' + Date.now();
+  characters[id] = {
+    name,
+    body: bodyDataURL,
+    selected: { ...selected },
+    positions: JSON.parse(JSON.stringify(positions)),
+    colors: JSON.parse(JSON.stringify(colors)),
+    thumb
+  };
+  loadedCharacterId = id;
+  saveCharacters();
+  renderChars();
+}
+
+async function loadCharacter(id){
+  const c = characters[id];
+  if(!c) return;
+  loadedCharacterId = id;
+  bodyDataURL = c.body;
+  bodyImg = null;
+  selected = { ...c.selected };
+  positions = JSON.parse(JSON.stringify(c.positions));
+  colors = c.colors ? JSON.parse(JSON.stringify(c.colors)) : {};
+  for(const cat of categories){
+    const itemId = selected[cat];
+    if(itemId){
+      const item = (library[cat] || []).find(i => i.id === itemId);
+      if(item){
+        await loadImg(item.dataURL);
+        if(item.backDataURL) await loadImg(item.backDataURL);
+        if(item.fillDataURL) await loadImg(item.fillDataURL);
+        if(item.patternDataURL) await loadImg(item.patternDataURL);
+      }
+    }
+  }
+  saveAll();
+  renderThumbs();
+  renderChars();
+  await render();
+  updateBodyDeleteBadge();
+}
+
+function renderChars(){
+  const grid = document.getElementById('charGrid');
+  const emptyHint = document.getElementById('charEmptyHint');
+  grid.innerHTML = '';
+  const entries = Object.entries(characters);
+  emptyHint.style.display = entries.length ? 'none' : 'block';
+  entries.forEach(([id, c]) => {
+    const el = document.createElement('div');
+    el.className = 'char-item' + (id === loadedCharacterId ? ' active' : '');
+    const thumbWrap = document.createElement('div');
+    thumbWrap.className = 'char-thumb';
+    const img = document.createElement('img');
+    img.src = c.thumb;
+    img.draggable = false;
+    thumbWrap.appendChild(img);
+    el.appendChild(thumbWrap);
+    const nameEl = document.createElement('div');
+    nameEl.className = 'char-name';
+    nameEl.textContent = c.name;
+    el.appendChild(nameEl);
+    const del = document.createElement('button');
+    del.className = 'char-del';
+    del.textContent = '×';
+    del.title = '삭제';
+    del.onclick = (e) => {
+      e.stopPropagation();
+      if(!confirm(`"${c.name}" 캐릭터를 삭제할까요?`)) return;
+      const removedChar = characters[id];
+      delete characters[id];
+      if(loadedCharacterId === id) loadedCharacterId = null;
+      saveCharacters();
+      renderChars();
+      pushUndo({
+        undo: () => { characters[id] = removedChar; saveCharacters(); renderChars(); },
+        redo: () => { delete characters[id]; if(loadedCharacterId === id) loadedCharacterId = null; saveCharacters(); renderChars(); }
+      });
+    };
+    el.appendChild(del);
+    el.onclick = () => loadCharacter(id);
+    grid.appendChild(el);
+  });
+}
+
+function loadImg(dataURL){
+  return new Promise((res) => {
+    if(imgCache[dataURL]){ res(imgCache[dataURL]); return; }
+    const im = new Image();
+    im.onload = () => { imgCache[dataURL] = im; res(im); };
+    im.src = dataURL;
+  });
+}
+
+function resizeImage(file, maxDim){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const im = new Image();
+      im.onload = () => {
+        let w = im.width, h = im.height;
+        if(w <= maxDim && h <= maxDim){
+          // Already within the limit - return the original file bytes untouched,
+          // no re-encoding, so quality is exactly as uploaded.
+          resolve(e.target.result);
+          return;
+        }
+        const scale = maxDim / Math.max(w,h);
+        w = Math.round(w*scale); h = Math.round(h*scale);
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const cx = c.getContext('2d');
+        cx.imageSmoothingEnabled = true;
+        cx.imageSmoothingQuality = 'high';
+        cx.drawImage(im, 0, 0, w, h);
+        resolve(c.toDataURL('image/png'));
+      };
+      im.onerror = reject;
+      im.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function getFrontBackLayers(){
+  const backLayers = [];
+  const frontLayers = [];
+  for(const cat of [...categories].reverse()){
+    if(hiddenCats[cat]) continue;
+    const itemId = selected[cat];
+    if(!itemId) continue;
+    const item = (library[cat] || []).find(i => i.id === itemId);
+    if(!item) continue;
+    const img = await loadImg(item.dataURL);
+    let pos = positions[itemId];
+    if(!pos){
+      const CW = canvas.width, CH = canvas.height;
+      const w = img.width, h = img.height;
+      pos = { x: (CW-w)/2, y: (CH-h)/2, w, h };
+      positions[itemId] = pos;
+    }
+    if(item.fillDataURL){
+      const fillImg = await loadImg(item.fillDataURL);
+      let base = getLayerImage(itemId, fillImg, 'fill');
+      if(item.patternDataURL){
+        const rawPatternImg = await loadImg(item.patternDataURL);
+      const patternImg = item.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, item.patternColor || '#000000');
+        base = getPatternedLayerImage(itemId, 'fill', base, patternImg, item.patternScale || 1);
+      }
+      frontLayers.push({ cat, itemId, img: base, ...pos });
+      frontLayers.push({ cat, itemId, img, ...pos });
+    } else {
+      let base = getLayerImage(itemId, img, 'front');
+      if(item.patternDataURL){
+        const rawPatternImg = await loadImg(item.patternDataURL);
+      const patternImg = item.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, item.patternColor || '#000000');
+        base = getPatternedLayerImage(itemId, 'front', base, patternImg, item.patternScale || 1);
+      }
+      frontLayers.push({ cat, itemId, img: base, ...pos });
+    }
+    if(item.backDataURL){
+      const backImg = await loadImg(item.backDataURL);
+      backLayers.push({ cat, itemId, img: getLayerImage(itemId, backImg, 'back'), ...pos });
+    }
+  }
+  return { backLayers, frontLayers };
+}
+
+async function render(){
+  if(bodyDataURL){
+    if(!bodyImg || bodyImg.src !== bodyDataURL){
+      bodyImg = await loadImg(bodyDataURL);
+      canvas.width = bodyImg.naturalWidth;
+      canvas.height = bodyImg.naturalHeight;
+    }
+  }
+  const CW = canvas.width, CH = canvas.height;
+  ctx.clearRect(0,0,CW,CH);
+  const { backLayers, frontLayers } = await getFrontBackLayers();
+  backLayers.forEach(l => ctx.drawImage(l.img, l.x, l.y, l.w, l.h));
+  if(bodyDataURL && bodyImg){
+    ctx.drawImage(bodyImg, 0, 0, CW, CH);
+  }
+  frontLayers.forEach(l => ctx.drawImage(l.img, l.x, l.y, l.w, l.h));
+  window._layers = frontLayers;
+}
+
+function commitRenameCategory(oldName, newName){
+  if(!newName || newName === oldName){ renderCatTabs(); return; }
+  if(categories.includes(newName)){ alert('이미 있는 카테고리 이름이에요.'); renderCatTabs(); return; }
+  const idx = categories.indexOf(oldName);
+  categories[idx] = newName;
+  library[newName] = library[oldName] || [];
+  delete library[oldName];
+  if(selected[oldName] !== undefined){ selected[newName] = selected[oldName]; delete selected[oldName]; }
+  if(hiddenCats[oldName] !== undefined){ hiddenCats[newName] = hiddenCats[oldName]; delete hiddenCats[oldName]; }
+  if(activeCat === oldName) activeCat = newName;
+  saveAll();
+  renderCatTabs(); renderThumbs(); render();
+}
+
+function startRenameCategory(row, cat){
+  const btn = row.querySelector('.cat-tab');
+  if(!btn) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'cat-tab-edit';
+  input.value = cat;
+  row.replaceChild(input, btn);
+  input.focus();
+  input.select();
+  let done = false;
+  const finish = () => {
+    if(done) return;
+    done = true;
+    commitRenameCategory(cat, input.value.trim());
+  };
+  input.onblur = finish;
+  input.onkeydown = (e) => {
+    if(e.key === 'Enter'){ e.preventDefault(); input.blur(); }
+    else if(e.key === 'Escape'){ done = true; renderCatTabs(); }
+  };
+}
+
+function reorderCategory(draggedCat, targetCat){
+  const fromIdx = categories.indexOf(draggedCat);
+  const toIdx = categories.indexOf(targetCat);
+  if(fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+  categories.splice(fromIdx, 1);
+  categories.splice(toIdx, 0, draggedCat);
+  saveAll();
+  renderCatTabs();
+  render();
+}
+
+function reorderItem(cat, draggedId, targetId){
+  const arr = library[cat];
+  if(!arr) return;
+  const fromIdx = arr.findIndex(i => i.id === draggedId);
+  const toIdx = arr.findIndex(i => i.id === targetId);
+  if(fromIdx === -1 || toIdx === -1 || fromIdx === toIdx) return;
+  const move = (from, to) => {
+    const a = library[cat];
+    const [moved] = a.splice(from, 1);
+    a.splice(to, 0, moved);
+    saveAll();
+    renderThumbs();
+  };
+  move(fromIdx, toIdx);
+  pushUndo({
+    undo: () => move(toIdx, fromIdx),
+    redo: () => move(fromIdx, toIdx)
+  });
+}
+
+const EYE_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+const EYE_OFF_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.7 21.7 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a21.7 21.7 0 0 1-3.22 4.29"/><path d="M1 1l22 22"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+const RESET_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>';
+const LAYERS_ICON = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
+const FILL_ICON = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 11l-8-8-8.5 8.5a2 2 0 0 0 0 2.8l5.7 5.7a2 2 0 0 0 2.8 0L19 11z"/><path d="M5 2l4 4"/><path d="M2 15s0 4 3 4 3-2 3-2"/></svg>';
+const PATTERN_ICON = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+let patternUploadTargetItemId = null;
+let fillUploadTargetItemId = null;
+const MORE_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>';
+const TRASH_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>';
+const EDIT_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>';
+const COPY_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const STAR_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+const PALETTE_ICON = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="10.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="13" cy="15.5" r="1.3" fill="currentColor" stroke="none"/></svg>';
+let editUploadTargetItemId = null;
+
+function closeAllItemMenus(){
+  document.querySelectorAll('.item-menu, .fav-popup').forEach(m => m.remove());
+}
+document.addEventListener('click', closeAllItemMenus);
+
+let undoStack = [];
+let redoStack = [];
+const UNDO_LIMIT = 30;
+
+function pushUndo(action){
+  undoStack.push(action);
+  if(undoStack.length > UNDO_LIMIT) undoStack.shift();
+  redoStack = [];
+  updateUndoRedoUI();
+}
+
+function doUndo(){
+  const action = undoStack.pop();
+  if(!action) return;
+  action.undo();
+  redoStack.push(action);
+  updateUndoRedoUI();
+}
+
+function doRedo(){
+  const action = redoStack.pop();
+  if(!action) return;
+  action.redo();
+  undoStack.push(action);
+  updateUndoRedoUI();
+}
+
+function updateUndoRedoUI(){
+  const u = document.getElementById('undoBtn');
+  const r = document.getElementById('redoBtn');
+  if(u) u.disabled = undoStack.length === 0;
+  if(r) r.disabled = redoStack.length === 0;
+}
+let backUploadTargetItemId = null;
+
+function renderCatTabs(){
+  const wrap = document.getElementById('catTabs');
+  wrap.innerHTML = '';
+  categories.forEach(cat => {
+    const row = document.createElement('div');
+    row.className = 'cat-tab-row' + (cat === activeCat ? ' active' : '') + (hiddenCats[cat] ? ' hidden-cat' : '');
+    row.draggable = true;
+
+    row.ondragstart = (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', cat);
+      row.classList.add('dragging');
+    };
+    row.ondragend = () => { row.classList.remove('dragging'); };
+    row.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; row.classList.add('drag-over'); };
+    row.ondragleave = () => { row.classList.remove('drag-over'); };
+    row.ondrop = (e) => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      const draggedCat = e.dataTransfer.getData('text/plain');
+      reorderCategory(draggedCat, cat);
+    };
+
+    const btn = document.createElement('button');
+    btn.className = 'cat-tab';
+    btn.innerHTML = cat + '<span class="count">' + ((library[cat]||[]).length) + '</span>';
+    btn.title = '더블클릭: 이름 변경 · 드래그: 순서 변경';
+    btn.onclick = () => {
+      activeCat = cat;
+      wrap.querySelectorAll('.cat-tab-row').forEach(r => r.classList.toggle('active', r === row));
+      renderThumbs();
+    };
+    btn.ondblclick = (e) => { e.stopPropagation(); startRenameCategory(row, cat); };
+    row.appendChild(btn);
+
+    const vis = document.createElement('button');
+    vis.className = 'cat-icon-btn vis-toggle';
+    vis.innerHTML = hiddenCats[cat] ? EYE_OFF_ICON : EYE_ICON;
+    vis.title = hiddenCats[cat] ? '보이기' : '숨기기';
+    vis.onclick = (e) => {
+      e.stopPropagation();
+      if(hiddenCats[cat]) delete hiddenCats[cat];
+      else hiddenCats[cat] = true;
+      saveAll();
+      renderCatTabs();
+      render();
+    };
+    row.appendChild(vis);
+
+    const del = document.createElement('button');
+    del.className = 'cat-icon-btn';
+    del.textContent = '×';
+    del.title = '삭제';
+    del.onclick = (e) => {
+      e.stopPropagation();
+      if(!confirm(`"${cat}" 카테고리와 그 안의 이미지들을 모두 삭제할까요?`)) return;
+      const idx = categories.indexOf(cat);
+      const removedLib = library[cat];
+      const wasSelected = selected[cat];
+      const wasHidden = hiddenCats[cat];
+      const wasActive = activeCat === cat;
+
+      categories = categories.filter(c => c !== cat);
+      delete library[cat];
+      delete selected[cat];
+      if(activeCat === cat) activeCat = categories[0] || null;
+      delete hiddenCats[cat];
+      saveAll();
+      renderCatTabs(); renderThumbs(); render();
+
+      pushUndo({
+        undo: () => {
+          categories.splice(idx, 0, cat);
+          library[cat] = removedLib;
+          if(wasSelected) selected[cat] = wasSelected;
+          if(wasHidden) hiddenCats[cat] = wasHidden;
+          if(wasActive) activeCat = cat;
+          saveAll();
+          renderCatTabs(); renderThumbs(); render();
+        },
+        redo: () => {
+          categories = categories.filter(c => c !== cat);
+          delete library[cat];
+          delete selected[cat];
+          if(activeCat === cat) activeCat = categories[0] || null;
+          delete hiddenCats[cat];
+          saveAll();
+          renderCatTabs(); renderThumbs(); render();
+        }
+      });
+    };
+    row.appendChild(del);
+
+    wrap.appendChild(row);
+  });
+}
+
+const cropCache = {};      // itemId -> cropped raw canvas (no tint)
+const thumbDisplayCache = {}; // "itemId:color" -> dataURL (cropped + tinted)
+const layerTintCache = {}; // "itemId:color" -> tinted canvas (full size)
+const patternedCache = {}; // "itemId:variant:color:pattern" -> tinted+patterned canvas
+
+function getContentBounds(im){
+  const c = document.createElement('canvas');
+  c.width = im.width; c.height = im.height;
+  const cx = c.getContext('2d');
+  cx.drawImage(im, 0, 0);
+  const data = cx.getImageData(0, 0, c.width, c.height).data;
+  let minX = c.width, minY = c.height, maxX = -1, maxY = -1;
+  for(let y = 0; y < c.height; y++){
+    for(let x = 0; x < c.width; x++){
+      if(data[(y*c.width+x)*4+3] > 10){
+        if(x < minX) minX = x;
+        if(x > maxX) maxX = x;
+        if(y < minY) minY = y;
+        if(y > maxY) maxY = y;
+      }
+    }
+  }
+  if(maxX < 0) return { x:0, y:0, w:im.width, h:im.height };
+  return { x:minX, y:minY, w:(maxX-minX+1), h:(maxY-minY+1) };
+}
+
+function tintCanvas(source, color, w, h){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const cx = c.getContext('2d');
+  cx.drawImage(source, 0, 0, w, h);
+  cx.globalCompositeOperation = 'multiply';
+  cx.fillStyle = color;
+  cx.fillRect(0, 0, w, h);
+  cx.globalCompositeOperation = 'destination-in';
+  cx.drawImage(source, 0, 0, w, h);
+
+  // Faint anti-aliased edge pixels become a visible colored fringe once tinted.
+  // Apply a gentle gamma curve to the alpha channel so faint edges fade out
+  // while solid, fully-opaque pixels are left untouched.
+  const ALPHA_GAMMA = 2.2;
+  const imgData = cx.getImageData(0, 0, w, h);
+  const d = imgData.data;
+  for(let i = 3; i < d.length; i += 4){
+    if(d[i] === 0 || d[i] === 255) continue;
+    d[i] = Math.round(255 * Math.pow(d[i] / 255, ALPHA_GAMMA));
+  }
+  cx.putImageData(imgData, 0, 0);
+
+  return c;
+}
+
+function isTintColor(color){
+  return !!color && color.toLowerCase() !== '#ffffff';
+}
+
+const cropBoundsCache = {};
+
+async function ensureCropBounds(item){
+  if(cropBoundsCache[item.id]) return cropBoundsCache[item.id];
+  const im = await loadImg(item.dataURL);
+  const b = getContentBounds(im);
+  cropBoundsCache[item.id] = b;
+  return b;
+}
+
+function cropImageToCanvas(img, b){
+  const c = document.createElement('canvas');
+  c.width = b.w; c.height = b.h;
+  c.getContext('2d').drawImage(img, b.x, b.y, b.w, b.h, 0, 0, b.w, b.h);
+  return c;
+}
+
+async function ensureCrop(item){
+  if(cropCache[item.id]) return cropCache[item.id];
+  const im = await loadImg(item.dataURL);
+  const b = await ensureCropBounds(item);
+  const c = cropImageToCanvas(im, b);
+  cropCache[item.id] = c;
+  return c;
+}
+
+async function getThumbDisplay(item){
+  const color = colors[item.id];
+  const key = item.id + ':' + (color || '') + (item.fillDataURL ? ':split' : '') + (item.patternDataURL ? (':pat:' + (item.patternScale || 1)) : '');
+  if(thumbDisplayCache[key]) return thumbDisplayCache[key];
+  const lineCrop = await ensureCrop(item);
+  let finalCanvas;
+  if(item.fillDataURL){
+    const b = await ensureCropBounds(item);
+    const fillImg = await loadImg(item.fillDataURL);
+    const fillCrop = cropImageToCanvas(fillImg, b);
+    let tintedFill = isTintColor(color) ? tintCanvas(fillCrop, color, b.w, b.h) : fillCrop;
+    if(item.patternDataURL){
+      const rawPatternImg = await loadImg(item.patternDataURL);
+      const patternImg = item.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, item.patternColor || '#000000');
+      tintedFill = patternMultiply(tintedFill, patternImg, item.patternScale || 1);
+    }
+    const c = document.createElement('canvas');
+    c.width = b.w; c.height = b.h;
+    const cx = c.getContext('2d');
+    cx.drawImage(tintedFill, 0, 0);
+    cx.drawImage(lineCrop, 0, 0);
+    finalCanvas = c;
+  } else {
+    finalCanvas = isTintColor(color) ? tintCanvas(lineCrop, color, lineCrop.width, lineCrop.height) : lineCrop;
+    if(item.patternDataURL){
+      const rawPatternImg = await loadImg(item.patternDataURL);
+      const patternImg = item.patternIsCustom ? rawPatternImg : getRecoloredPattern(item.id, rawPatternImg, item.patternColor || '#000000');
+      finalCanvas = patternMultiply(finalCanvas, patternImg, item.patternScale || 1);
+    }
+  }
+  const url = finalCanvas.toDataURL('image/png');
+  thumbDisplayCache[key] = url;
+  return url;
+}
+
+function invalidateItemCaches(itemId){
+  Object.keys(thumbDisplayCache).forEach(k => { if(k.startsWith(itemId + ':')) delete thumbDisplayCache[k]; });
+  Object.keys(layerTintCache).forEach(k => { if(k.startsWith(itemId + ':')) delete layerTintCache[k]; });
+  Object.keys(patternedCache).forEach(k => { if(k.startsWith(itemId + ':')) delete patternedCache[k]; });
+  Object.keys(recoloredPatternCache).forEach(k => { if(k.startsWith(itemId + ':')) delete recoloredPatternCache[k]; });
+}
+
+function getLayerImage(itemId, img, variant){
+  const color = colors[itemId];
+  if(!isTintColor(color)) return img;
+  const key = itemId + ':' + variant + ':' + color;
+  if(layerTintCache[key]) return layerTintCache[key];
+  const tinted = tintCanvas(img, color, img.width, img.height);
+  layerTintCache[key] = tinted;
+  return tinted;
+}
+
+function makeStripePatternDataURL(vertical){
+  const c = document.createElement('canvas');
+  c.width = 8; c.height = 8;
+  const cx = c.getContext('2d');
+  cx.fillStyle = '#ffffff';
+  cx.fillRect(0, 0, 8, 8);
+  cx.fillStyle = '#000000';
+  if(vertical) cx.fillRect(0, 0, 2, 8);
+  else cx.fillRect(0, 0, 8, 2);
+  return c.toDataURL('image/png');
+}
+
+function makeCheckerPatternDataURL(){
+  const c = document.createElement('canvas');
+  c.width = 8; c.height = 8;
+  const cx = c.getContext('2d');
+  cx.fillStyle = '#ffffff';
+  cx.fillRect(0, 0, 8, 8);
+  cx.fillStyle = '#000000';
+  cx.fillRect(0, 0, 4, 4);
+  cx.fillRect(4, 4, 4, 4);
+  return c.toDataURL('image/png');
+}
+
+function makeHeartPatternDataURL(){
+  const size = 20;
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const cx = c.getContext('2d');
+  cx.fillStyle = '#ffffff';
+  cx.fillRect(0, 0, size, size);
+  cx.fillStyle = '#000000';
+  cx.save();
+  cx.translate(1.4, 1.1);
+  cx.scale(0.72, 0.72);
+  const heartPath = new Path2D('M12,21.35l-1.45-1.32C5.4,15.36,2,12.28,2,8.5C2,5.42,4.42,3,7.5,3c1.74,0,3.41,0.81,4.5,2.09C13.09,3.81,14.76,3,16.5,3C19.58,3,22,5.42,22,8.5c0,3.78-3.4,6.86-8.55,11.54L12,21.35z');
+  cx.fill(heartPath);
+  cx.restore();
+  return c.toDataURL('image/png');
+}
+
+function makeStarPatternDataURL(){
+  const size = 20;
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const cx = c.getContext('2d');
+  cx.fillStyle = '#ffffff';
+  cx.fillRect(0, 0, size, size);
+  cx.fillStyle = '#000000';
+  const cxp = size/2, cyp = size/2, spikes = 5, outerR = 7.5, innerR = 3;
+  let rot = Math.PI/2*3;
+  const step = Math.PI/spikes;
+  cx.beginPath();
+  cx.moveTo(cxp, cyp - outerR);
+  for(let i = 0; i < spikes; i++){
+    cx.lineTo(cxp + Math.cos(rot)*outerR, cyp + Math.sin(rot)*outerR);
+    rot += step;
+    cx.lineTo(cxp + Math.cos(rot)*innerR, cyp + Math.sin(rot)*innerR);
+    rot += step;
+  }
+  cx.closePath();
+  cx.fill();
+  return c.toDataURL('image/png');
+}
+
+const PATTERN_PRESETS = [
+  { name: '세로선', gen: () => makeStripePatternDataURL(true) },
+  { name: '가로선', gen: () => makeStripePatternDataURL(false) },
+  { name: '체크무늬', gen: () => makeCheckerPatternDataURL() },
+  { name: '하트', gen: () => makeHeartPatternDataURL() },
+  { name: '별', gen: () => makeStarPatternDataURL() }
+];
+
+const recoloredPatternCache = {};
+
+function recolorPatternTile(patternImg, colorHex){
+  const w = patternImg.width, h = patternImg.height;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const cx = c.getContext('2d');
+  cx.drawImage(patternImg, 0, 0);
+  const imgData = cx.getImageData(0, 0, w, h);
+  const d = imgData.data;
+  const rC = parseInt(colorHex.slice(1,3), 16), gC = parseInt(colorHex.slice(3,5), 16), bC = parseInt(colorHex.slice(5,7), 16);
+  for(let i = 0; i < d.length; i += 4){
+    const lum = (d[i]*0.299 + d[i+1]*0.587 + d[i+2]*0.114) / 255;
+    d[i]   = Math.round(rC + (255-rC)*lum);
+    d[i+1] = Math.round(gC + (255-gC)*lum);
+    d[i+2] = Math.round(bC + (255-bC)*lum);
+  }
+  cx.putImageData(imgData, 0, 0);
+  return c;
+}
+
+function getRecoloredPattern(itemId, patternImg, colorHex){
+  const key = itemId + ':patcolor:' + colorHex;
+  if(recoloredPatternCache[key]) return recoloredPatternCache[key];
+  const result = recolorPatternTile(patternImg, colorHex);
+  recoloredPatternCache[key] = result;
+  return result;
+}
+
+function refreshThumbImage(item){
+  const el = document.querySelector(`.thumb[data-item-id="${item.id}"] img`);
+  if(el){
+    getThumbDisplay(item).then(url => { el.src = url; });
+  }
+}
+
+function duplicateItem(item, cat){
+  const idx = library[cat].findIndex(i => i.id === item.id);
+  if(idx === -1) return;
+  const newId = 'i' + Date.now() + Math.random().toString(36).slice(2, 7);
+  const clone = { ...item, id: newId };
+  const copiedColor = colors[item.id];
+
+  const doAdd = () => {
+    library[cat].splice(idx + 1, 0, clone);
+    if(copiedColor) colors[newId] = copiedColor;
+    saveAll();
+    renderCatTabs();
+    renderThumbs();
+  };
+  const doRemove = () => {
+    library[cat] = library[cat].filter(i => i.id !== newId);
+    delete colors[newId];
+    delete positions[newId];
+    saveAll();
+    renderCatTabs();
+    renderThumbs();
+  };
+
+  doAdd();
+  pushUndo({ undo: doRemove, redo: doAdd });
+}
+
+async function applyPatternToItem(item, dataURL){
+  item.patternDataURL = dataURL;
+  item.patternIsCustom = false;
+  await loadImg(dataURL);
+  invalidateItemCaches(item.id);
+  saveAll();
+  renderThumbs();
+  render();
+}
+
+async function removePatternFromItem(item){
+  delete item.patternDataURL;
+  delete item.patternColor;
+  invalidateItemCaches(item.id);
+  saveAll();
+  renderThumbs();
+  render();
+}
+
+function openPatternPresetPopup(item, rect){
+  closeAllItemMenus();
+  const pop = document.createElement('div');
+  pop.className = 'fav-popup pattern-popup';
+  pop.style.top = (rect.bottom + 5) + 'px';
+  pop.style.left = Math.min(rect.left, window.innerWidth - 210) + 'px';
+  pop.onclick = ev => ev.stopPropagation();
+
+  if(item.patternDataURL && !item.patternIsCustom){
+    const colorRow = document.createElement('div');
+    colorRow.className = 'pattern-color-row';
+    const colorLabel = document.createElement('span');
+    colorLabel.textContent = '패턴 색상';
+    const patColorInput = document.createElement('input');
+    patColorInput.type = 'color';
+    patColorInput.className = 'pattern-color-input';
+    patColorInput.value = item.patternColor || '#000000';
+    patColorInput.oninput = (e) => {
+      item.patternColor = e.target.value;
+      invalidateItemCaches(item.id);
+      render();
+    };
+    patColorInput.onchange = () => {
+      saveAll();
+      refreshThumbImage(item);
+    };
+    colorRow.appendChild(colorLabel);
+    colorRow.appendChild(patColorInput);
+    pop.appendChild(colorRow);
+  }
+
+  if(item.patternDataURL){
+    const scaleRow = document.createElement('div');
+    scaleRow.className = 'pattern-color-row';
+    const scaleLabel = document.createElement('span');
+    scaleLabel.textContent = '패턴 크기';
+    const scaleInput = document.createElement('input');
+    scaleInput.type = 'range';
+    scaleInput.className = 'pattern-scale-input';
+    scaleInput.min = '0.2';
+    scaleInput.max = '3';
+    scaleInput.step = '0.05';
+    scaleInput.value = item.patternScale || 1;
+    scaleInput.oninput = (e) => {
+      item.patternScale = parseFloat(e.target.value);
+      invalidateItemCaches(item.id);
+      render();
+    };
+    scaleInput.onchange = () => {
+      saveAll();
+      refreshThumbImage(item);
+    };
+    scaleRow.appendChild(scaleLabel);
+    scaleRow.appendChild(scaleInput);
+    pop.appendChild(scaleRow);
+  }
+
+  const presetRow = document.createElement('div');
+  presetRow.className = 'preset-row';
+  PATTERN_PRESETS.forEach(preset => {
+    const dataURL = preset.gen();
+    const isActive = item.patternDataURL === dataURL;
+    const btn = document.createElement('button');
+    btn.className = 'pattern-preset-btn' + (isActive ? ' active' : '');
+    btn.style.backgroundImage = `url(${dataURL})`;
+    btn.title = preset.name;
+    btn.onclick = async () => {
+      if(isActive){
+        await removePatternFromItem(item);
+      } else {
+        await applyPatternToItem(item, dataURL);
+      }
+      pop.remove();
+      openPatternPresetPopup(item, rect);
+    };
+    presetRow.appendChild(btn);
+  });
+  pop.appendChild(presetRow);
+
+  const uploadBtn = document.createElement('button');
+  uploadBtn.className = 'item-menu-row';
+  uploadBtn.innerHTML = PATTERN_ICON + '<span>직접 업로드</span>';
+  uploadBtn.onclick = () => {
+    closeAllItemMenus();
+    patternUploadTargetItemId = item.id;
+    document.getElementById('patternLayerInput').click();
+  };
+  pop.appendChild(uploadBtn);
+
+  if(item.patternDataURL){
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'item-menu-row danger';
+    removeBtn.innerHTML = TRASH_ICON + '<span>패턴 제거</span>';
+    removeBtn.onclick = async () => {
+      await removePatternFromItem(item);
+      pop.remove();
+      openPatternPresetPopup(item, rect);
+    };
+    pop.appendChild(removeBtn);
+  }
+
+  document.body.appendChild(pop);
+}
+
+function patternMultiply(baseSource, patternImg, scale){
+  const w = baseSource.width, h = baseSource.height;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const cx = c.getContext('2d');
+  cx.drawImage(baseSource, 0, 0);
+  cx.globalCompositeOperation = 'multiply';
+  const s = scale || 1;
+  const pat = cx.createPattern(patternImg, 'repeat');
+  if(pat.setTransform){
+    const tileW = patternImg.width * s, tileH = patternImg.height * s;
+    const offsetX = (w/2) - (tileW/2);
+    const offsetY = (h/2) - (tileH/2);
+    pat.setTransform(new DOMMatrix().translate(offsetX, offsetY).scale(s));
+  }
+  cx.fillStyle = pat;
+  cx.fillRect(0, 0, w, h);
+  cx.globalCompositeOperation = 'destination-in';
+  cx.drawImage(baseSource, 0, 0);
+  return c;
+}
+
+function getPatternedLayerImage(itemId, variant, baseSource, patternImg, scale){
+  const color = colors[itemId] || '';
+  const key = itemId + ':' + variant + ':' + color + ':pattern:' + (scale || 1);
+  if(patternedCache[key]) return patternedCache[key];
+  const result = patternMultiply(baseSource, patternImg, scale);
+  patternedCache[key] = result;
+  return result;
+}
+
+function renderThumbs(){
+  closeAllItemMenus();
+  const grid = document.getElementById('thumbGrid');
+  const label = document.getElementById('thumbLabel');
+  grid.innerHTML = '';
+  if(!activeCat){ label.textContent = '아이템'; return; }
+  label.textContent = activeCat;
+  (library[activeCat] || []).forEach(item => {
+    const t = document.createElement('div');
+    t.className = 'thumb' + (selected[activeCat] === item.id ? ' selected' : '');
+    t.dataset.itemId = item.id;
+    t.draggable = true;
+    t.ondragstart = (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', item.id);
+      t.classList.add('dragging');
+    };
+    t.ondragend = () => { t.classList.remove('dragging'); };
+    t.ondragover = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; t.classList.add('drag-over'); };
+    t.ondragleave = () => { t.classList.remove('drag-over'); };
+    t.ondrop = (e) => {
+      e.preventDefault();
+      t.classList.remove('drag-over');
+      const draggedId = e.dataTransfer.getData('text/plain');
+      reorderItem(activeCat, draggedId, item.id);
+    };
+    const img = document.createElement('img');
+    const dcKey = item.id + ':' + (colors[item.id] || '');
+    img.src = thumbDisplayCache[dcKey] || item.dataURL;
+    img.draggable = false;
+    img.style.userSelect = 'none';
+    img.style.pointerEvents = 'none';
+    t.appendChild(img);
+    if(!thumbDisplayCache[dcKey]){
+      getThumbDisplay(item).then(url => { img.src = url; });
+    }
+    const deleteItem = () => {
+      if(!confirm('이 이미지를 삭제할까요?')) return;
+      const cat = activeCat;
+      const idx = library[cat].findIndex(i => i.id === item.id);
+      const removedItem = library[cat][idx];
+      const wasSelected = selected[cat] === item.id;
+      const oldPos = positions[item.id];
+      const oldColor = colors[item.id];
+
+      const doDelete = () => {
+        library[cat] = library[cat].filter(i => i.id !== item.id);
+        if(selected[cat] === item.id) delete selected[cat];
+        delete positions[item.id];
+        delete colors[item.id];
+        delete cropCache[item.id];
+        delete cropBoundsCache[item.id];
+        invalidateItemCaches(item.id);
+        saveAll();
+        renderCatTabs(); renderThumbs(); render();
+      };
+      doDelete();
+      pushUndo({
+        undo: () => {
+          library[cat].splice(idx, 0, removedItem);
+          if(wasSelected) selected[cat] = item.id;
+          if(oldPos) positions[item.id] = oldPos;
+          if(oldColor) colors[item.id] = oldColor;
+          saveAll();
+          renderCatTabs(); renderThumbs(); render();
+        },
+        redo: doDelete
+      });
+    };
+
+    const toggleBack = () => {
+      if(item.backDataURL){
+        if(!confirm('뒤 레이어를 제거할까요?')) return;
+        delete item.backDataURL;
+        invalidateItemCaches(item.id);
+        saveAll();
+        renderThumbs();
+        render();
+      } else {
+        backUploadTargetItemId = item.id;
+        document.getElementById('backLayerInput').click();
+      }
+    };
+
+    const toggleFill = () => {
+      if(item.fillDataURL){
+        if(!confirm('밑색 레이어를 제거할까요? (색을 입히면 다시 선 이미지 전체가 물들어요)')) return;
+        delete item.fillDataURL;
+        invalidateItemCaches(item.id);
+        saveAll();
+        renderThumbs();
+        render();
+      } else {
+        fillUploadTargetItemId = item.id;
+        document.getElementById('fillLayerInput').click();
+      }
+    };
+
+    const moreBtn = document.createElement('button');
+    moreBtn.className = 'more-btn' + ((item.backDataURL || item.fillDataURL || item.patternDataURL) ? ' has-extra' : '');
+    moreBtn.innerHTML = MORE_ICON;
+    moreBtn.title = '더보기';
+    moreBtn.onclick = (e) => {
+      e.stopPropagation();
+      closeAllItemMenus();
+      const rect = moreBtn.getBoundingClientRect();
+      const menu = document.createElement('div');
+      menu.className = 'item-menu';
+      menu.style.top = (rect.bottom + 5) + 'px';
+      menu.style.left = Math.min(rect.left, window.innerWidth - 190) + 'px';
+      menu.onclick = ev => ev.stopPropagation();
+
+      const dupRow = document.createElement('button');
+      dupRow.className = 'item-menu-row';
+      dupRow.innerHTML = COPY_ICON + '<span>복제</span>';
+      dupRow.onclick = () => {
+        closeAllItemMenus();
+        duplicateItem(item, activeCat);
+      };
+      menu.appendChild(dupRow);
+
+      const editRow = document.createElement('button');
+      editRow.className = 'item-menu-row';
+      editRow.innerHTML = EDIT_ICON + '<span>이미지 교체</span>';
+      editRow.onclick = () => {
+        closeAllItemMenus();
+        editUploadTargetItemId = item.id;
+        document.getElementById('editItemInput').click();
+      };
+      menu.appendChild(editRow);
+
+      const backRow = document.createElement('button');
+      backRow.className = 'item-menu-row';
+      backRow.innerHTML = LAYERS_ICON + `<span>${item.backDataURL ? '뒤 레이어 제거' : '뒤 레이어 추가'}</span>`;
+      backRow.onclick = () => { closeAllItemMenus(); toggleBack(); };
+      menu.appendChild(backRow);
+
+      const fillRow = document.createElement('button');
+      fillRow.className = 'item-menu-row';
+      fillRow.innerHTML = FILL_ICON + `<span>${item.fillDataURL ? '밑색 레이어 제거' : '밑색 레이어 추가'}</span>`;
+      fillRow.onclick = () => { closeAllItemMenus(); toggleFill(); };
+      menu.appendChild(fillRow);
+
+      const patternRow = document.createElement('button');
+      patternRow.className = 'item-menu-row';
+      patternRow.innerHTML = PATTERN_ICON + '<span>패턴</span>';
+      patternRow.onclick = () => { const r = moreBtn.getBoundingClientRect(); closeAllItemMenus(); openPatternPresetPopup(item, r); };
+      menu.appendChild(patternRow);
+
+      if(isTintColor(colors[item.id])){
+        const hex = colors[item.id];
+        const isFav = favoriteColors.includes(hex);
+        const favRow = document.createElement('button');
+        favRow.className = 'item-menu-row';
+        favRow.innerHTML = STAR_ICON + `<span>${isFav ? '즐겨찾는 색에서 제거' : '즐겨찾는 색에 추가'}</span>`;
+        favRow.onclick = () => {
+          closeAllItemMenus();
+          if(isFav){
+            favoriteColors = favoriteColors.filter(c => c !== hex);
+          } else {
+            favoriteColors = [hex, ...favoriteColors.filter(c => c !== hex)].slice(0, 8);
+          }
+          saveAll();
+          renderThumbs();
+        };
+        menu.appendChild(favRow);
+      }
+
+      const delRow = document.createElement('button');
+      delRow.className = 'item-menu-row danger';
+      delRow.innerHTML = TRASH_ICON + '<span>이미지 삭제</span>';
+      delRow.onclick = () => { closeAllItemMenus(); deleteItem(); };
+      menu.appendChild(delRow);
+
+      document.body.appendChild(menu);
+    };
+    t.appendChild(moreBtn);
+
+    const favOpenBtn = document.createElement('button');
+    favOpenBtn.className = 'fav-open-btn';
+    favOpenBtn.innerHTML = PALETTE_ICON;
+    favOpenBtn.title = '즐겨찾는 색';
+    favOpenBtn.onclick = (e) => {
+      e.stopPropagation();
+      closeAllItemMenus();
+      const rect = favOpenBtn.getBoundingClientRect();
+      const pop = document.createElement('div');
+      pop.className = 'fav-popup';
+      pop.style.top = (rect.bottom + 5) + 'px';
+      pop.style.left = Math.min(rect.left, window.innerWidth - 170) + 'px';
+      pop.onclick = ev => ev.stopPropagation();
+
+      if(!favoriteColors.length){
+        const empty = document.createElement('div');
+        empty.className = 'fav-popup-empty';
+        empty.textContent = '즐겨찾는 색이 아직 없어요. 색을 입힌 뒤 ⋮ 메뉴에서 추가해보세요.';
+        pop.appendChild(empty);
+      } else {
+        favoriteColors.forEach(hex => {
+          const sw = document.createElement('button');
+          sw.className = 'fav-swatch';
+          sw.style.background = hex;
+          sw.title = '클릭해서 적용';
+          sw.onclick = (ev) => {
+            ev.stopPropagation();
+            closeAllItemMenus();
+            const oldHex = colors[item.id];
+            colors[item.id] = hex;
+            invalidateItemCaches(item.id);
+            saveAll();
+            renderThumbs();
+            render();
+            pushUndo({
+              undo: () => { if(oldHex) colors[item.id]=oldHex; else delete colors[item.id]; invalidateItemCaches(item.id); saveAll(); renderThumbs(); render(); },
+              redo: () => { colors[item.id]=hex; invalidateItemCaches(item.id); saveAll(); renderThumbs(); render(); }
+            });
+          };
+          const rm = document.createElement('button');
+          rm.className = 'fav-remove';
+          rm.textContent = '×';
+          rm.title = '제거';
+          rm.onclick = (ev) => {
+            ev.stopPropagation();
+            favoriteColors = favoriteColors.filter(c => c !== hex);
+            saveAll();
+            closeAllItemMenus();
+          };
+          sw.appendChild(rm);
+          pop.appendChild(sw);
+        });
+      }
+      document.body.appendChild(pop);
+    };
+    t.appendChild(favOpenBtn);
+
+    let colorPickOldValue = null;
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.className = 'colorpick';
+    colorInput.value = colors[item.id] || '#ffffff';
+    colorInput.title = '색 바꾸기';
+    colorInput.onclick = (e) => e.stopPropagation();
+    colorInput.onfocus = () => { colorPickOldValue = colors[item.id] || null; };
+    colorInput.oninput = (e) => {
+      e.stopPropagation();
+      colors[item.id] = e.target.value;
+      invalidateItemCaches(item.id);
+      getThumbDisplay(item).then(url => { img.src = url; });
+      render();
+    };
+    colorInput.onchange = (e) => {
+      e.stopPropagation();
+      const newVal = e.target.value;
+      const oldVal = colorPickOldValue;
+      saveAll();
+      renderThumbs();
+      if(oldVal !== newVal){
+        pushUndo({
+          undo: () => { if(oldVal) colors[item.id]=oldVal; else delete colors[item.id]; invalidateItemCaches(item.id); saveAll(); renderThumbs(); render(); },
+          redo: () => { colors[item.id]=newVal; invalidateItemCaches(item.id); saveAll(); renderThumbs(); render(); }
+        });
+      }
+    };
+    t.appendChild(colorInput);
+
+    if(isTintColor(colors[item.id])){
+      const colorReset = document.createElement('button');
+      colorReset.className = 'color-reset';
+      colorReset.innerHTML = RESET_ICON;
+      colorReset.title = '되돌리기';
+      colorReset.onclick = (e) => {
+        e.stopPropagation();
+        const oldVal = colors[item.id];
+        delete colors[item.id];
+        invalidateItemCaches(item.id);
+        saveAll();
+        renderThumbs();
+        render();
+        pushUndo({
+          undo: () => { colors[item.id]=oldVal; invalidateItemCaches(item.id); saveAll(); renderThumbs(); render(); },
+          redo: () => { delete colors[item.id]; invalidateItemCaches(item.id); saveAll(); renderThumbs(); render(); }
+        });
+      };
+      t.appendChild(colorReset);
+    }
+
+    t.onclick = async () => {
+      const cat = activeCat;
+      const oldSelected = selected[cat];
+      if(selected[cat] === item.id){
+        delete selected[cat];
+        saveAll();
+        renderThumbs();
+        render();
+        pushUndo({
+          undo: () => { selected[cat] = item.id; saveAll(); renderThumbs(); render(); },
+          redo: () => { delete selected[cat]; saveAll(); renderThumbs(); render(); }
+        });
+        return;
+      }
+      selected[cat] = item.id;
+      saveAll();
+      renderThumbs();
+      await loadImg(item.dataURL);
+      render();
+      pushUndo({
+        undo: () => { if(oldSelected) selected[cat] = oldSelected; else delete selected[cat]; saveAll(); renderThumbs(); render(); },
+        redo: () => { selected[cat] = item.id; saveAll(); renderThumbs(); render(); }
+      });
+    };
+    grid.appendChild(t);
+  });
+  const add = document.createElement('div');
+  add.className = 'thumb add-new';
+  add.textContent = '+';
+  add.onclick = () => document.getElementById('itemFileInput').click();
+  grid.appendChild(add);
+}
+
+document.getElementById('saveCharBtn').onclick = saveCurrentAsCharacter;
+
+function updateBodyDeleteBadge(){
+  const badge = document.getElementById('bodyDeleteBtn');
+  if(badge) badge.style.display = bodyDataURL ? 'flex' : 'none';
+}
+
+document.getElementById('bodyUploadBtn').onclick = () => document.getElementById('bodyFileInput').click();
+document.getElementById('bodyFileInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  bodyDataURL = await resizeImage(file, Infinity);
+  saveAll();
+  render();
+  updateBodyDeleteBadge();
+  e.target.value = '';
+};
+
+document.getElementById('bodyDeleteBtn').onclick = (e) => {
+  e.stopPropagation();
+  if(!bodyDataURL) return;
+  if(!confirm('베이스 인물 이미지를 삭제할까요?')) return;
+  const oldBody = bodyDataURL;
+  const applyBody = (val) => {
+    bodyDataURL = val;
+    bodyImg = null;
+    if(!val){ canvas.width = 480; canvas.height = 640; }
+    saveAll();
+    render();
+    updateBodyDeleteBadge();
+  };
+  applyBody(null);
+  pushUndo({
+    undo: () => applyBody(oldBody),
+    redo: () => applyBody(null)
+  });
+};
+
+document.getElementById('itemFileInput').onchange = async (e) => {
+  if(!activeCat) return;
+  const files = Array.from(e.target.files);
+  for(const file of files){
+    const dataURL = await resizeImage(file, Infinity);
+    const id = 'i' + Date.now() + Math.random().toString(36).slice(2,7);
+    library[activeCat].push({ id, dataURL });
+  }
+  saveAll();
+  renderCatTabs(); renderThumbs();
+  e.target.value = '';
+};
+
+document.getElementById('backLayerInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  const targetId = backUploadTargetItemId;
+  backUploadTargetItemId = null;
+  if(!file || !targetId){ e.target.value = ''; return; }
+  const dataURL = await resizeImage(file, Infinity);
+  let found = null;
+  for(const cat of categories){
+    const it = (library[cat] || []).find(i => i.id === targetId);
+    if(it){ found = it; break; }
+  }
+  if(found){
+    found.backDataURL = dataURL;
+    await loadImg(dataURL);
+    invalidateItemCaches(targetId);
+    saveAll();
+    renderThumbs();
+    render();
+  }
+  e.target.value = '';
+};
+
+document.getElementById('fillLayerInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  const targetId = fillUploadTargetItemId;
+  fillUploadTargetItemId = null;
+  if(!file || !targetId){ e.target.value = ''; return; }
+  const dataURL = await resizeImage(file, Infinity);
+  let found = null;
+  for(const cat of categories){
+    const it = (library[cat] || []).find(i => i.id === targetId);
+    if(it){ found = it; break; }
+  }
+  if(found){
+    found.fillDataURL = dataURL;
+    await loadImg(dataURL);
+    invalidateItemCaches(targetId);
+    saveAll();
+    renderThumbs();
+    render();
+  }
+  e.target.value = '';
+};
+
+document.getElementById('patternLayerInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  const targetId = patternUploadTargetItemId;
+  patternUploadTargetItemId = null;
+  if(!file || !targetId){ e.target.value = ''; return; }
+  const dataURL = await resizeImage(file, Infinity);
+  let found = null;
+  for(const cat of categories){
+    const it = (library[cat] || []).find(i => i.id === targetId);
+    if(it){ found = it; break; }
+  }
+  if(found){
+    found.patternDataURL = dataURL;
+    found.patternIsCustom = true;
+    delete found.patternColor;
+    await loadImg(dataURL);
+    invalidateItemCaches(targetId);
+    saveAll();
+    renderThumbs();
+    render();
+  }
+  e.target.value = '';
+};
+
+document.getElementById('editItemInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  const targetId = editUploadTargetItemId;
+  editUploadTargetItemId = null;
+  if(!file || !targetId){ e.target.value = ''; return; }
+  const dataURL = await resizeImage(file, Infinity);
+  let found = null;
+  for(const cat of categories){
+    const it = (library[cat] || []).find(i => i.id === targetId);
+    if(it){ found = it; break; }
+  }
+  if(found){
+    const oldDataURL = found.dataURL;
+    const applyEdit = async (newURL) => {
+      found.dataURL = newURL;
+      await loadImg(newURL);
+      delete cropCache[targetId];
+      delete cropBoundsCache[targetId];
+      invalidateItemCaches(targetId);
+      saveAll();
+      renderThumbs();
+      render();
+    };
+    await applyEdit(dataURL);
+    pushUndo({
+      undo: () => applyEdit(oldDataURL),
+      redo: () => applyEdit(dataURL)
+    });
+  }
+  e.target.value = '';
+};
+
+document.getElementById('addCatBtn').onclick = () => {
+  const name = prompt('새 카테고리 이름 (목록 아래쪽에 추가되며, 드래그로 순서를 바꾸면 레이어 순서도 함께 바뀌어요)');
+  if(!name) return;
+  if(categories.includes(name)){ alert('이미 있는 카테고리예요.'); return; }
+  categories.push(name);
+  library[name] = [];
+  activeCat = name;
+  saveAll();
+  renderCatTabs(); renderThumbs();
+};
+
+document.getElementById('exportDataBtn').onclick = () => {
+  const payload = {
+    type: 'dressup-maker-backup',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    categories, library, positions, selected, colors, hiddenCats, characters, favoriteColors,
+    body: bodyDataURL
+  };
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'dressup-maker-backup.json';
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
+document.getElementById('importDataBtn').onclick = () => document.getElementById('importDataInput').click();
+
+document.getElementById('importDataInput').onchange = async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  let data;
+  try {
+    data = JSON.parse(await file.text());
+  } catch(err){
+    alert('올바른 백업 파일이 아니에요.');
+    e.target.value = '';
+    return;
+  }
+  if(!confirm('지금 브라우저에 있는 데이터를 이 파일 내용으로 덮어씁니다. 계속할까요?')){
+    e.target.value = '';
+    return;
+  }
+  categories = data.categories || ['상의','하의','아우터','신발','헤어','액세서리'];
+  library = data.library || {};
+  positions = data.positions || {};
+  selected = data.selected || {};
+  colors = data.colors || {};
+  hiddenCats = data.hiddenCats || {};
+  characters = { ...characters, ...(data.characters || {}) };
+  favoriteColors = [...new Set([...favoriteColors, ...(data.favoriteColors || [])])].slice(0, 12);
+  bodyDataURL = data.body || null;
+  bodyImg = null;
+  activeCat = categories[0] || null;
+
+  undoStack = [];
+  redoStack = [];
+  updateUndoRedoUI();
+
+  Object.keys(imgCache).forEach(k => delete imgCache[k]);
+  Object.keys(cropCache).forEach(k => delete cropCache[k]);
+  Object.keys(cropBoundsCache).forEach(k => delete cropBoundsCache[k]);
+  Object.keys(thumbDisplayCache).forEach(k => delete thumbDisplayCache[k]);
+  Object.keys(layerTintCache).forEach(k => delete layerTintCache[k]);
+
+  for(const cat of categories){
+    for(const item of library[cat] || []){
+      await loadImg(item.dataURL);
+      if(item.backDataURL) await loadImg(item.backDataURL);
+      if(item.fillDataURL) await loadImg(item.fillDataURL);
+      if(item.patternDataURL) await loadImg(item.patternDataURL);
+    }
+  }
+
+  saveAll();
+  saveCharacters();
+  renderCatTabs();
+  renderThumbs();
+  renderChars();
+  await render();
+  updateBodyDeleteBadge();
+  e.target.value = '';
+  alert('불러오기가 완료됐어요.');
+};
+
+document.getElementById('resetBtn').onclick = () => {
+  if(!confirm('입혀진 옷을 모두 벗기고 위치를 초기화할까요? (업로드한 이미지는 유지됩니다)')) return;
+  const oldSelected = { ...selected };
+  const oldPositions = JSON.parse(JSON.stringify(positions));
+  selected = {};
+  positions = {};
+  saveAll();
+  render();
+  renderThumbs();
+  pushUndo({
+    undo: () => { selected = oldSelected; positions = oldPositions; saveAll(); render(); renderThumbs(); },
+    redo: () => { selected = {}; positions = {}; saveAll(); render(); renderThumbs(); }
+  });
+};
+
+document.getElementById('undoBtn').onclick = doUndo;
+document.getElementById('redoBtn').onclick = doRedo;
+window.addEventListener('keydown', (e) => {
+  const meta = e.ctrlKey || e.metaKey;
+  if(!meta) return;
+  const active = document.activeElement;
+  if(active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
+  if(e.key.toLowerCase() === 'z' && e.shiftKey){ e.preventDefault(); doRedo(); }
+  else if(e.key.toLowerCase() === 'z'){ e.preventDefault(); doUndo(); }
+  else if(e.key.toLowerCase() === 'y'){ e.preventDefault(); doRedo(); }
+});
+
+document.getElementById('exportBtn').onclick = () => {
+  const link = document.createElement('a');
+  link.download = 'outfit.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+};
+
+let dragging = null;
+let dragStartPos = null;
+function getPointerPos(e){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+}
+const alphaMapCache = new WeakMap();
+
+function getAlphaMap(img){
+  if(alphaMapCache.has(img)) return alphaMapCache.get(img);
+  const c = document.createElement('canvas');
+  c.width = img.width; c.height = img.height;
+  const cx = c.getContext('2d');
+  cx.drawImage(img, 0, 0);
+  const data = cx.getImageData(0, 0, c.width, c.height).data;
+  const map = { width: c.width, height: c.height, data };
+  alphaMapCache.set(img, map);
+  return map;
+}
+
+function isOpaqueAt(img, localX, localY){
+  const map = getAlphaMap(img);
+  const x = Math.floor(localX), y = Math.floor(localY);
+  if(x < 0 || y < 0 || x >= map.width || y >= map.height) return false;
+  return map.data[(y * map.width + x) * 4 + 3] > 10;
+}
+
+function startDrag(e){
+  const p = getPointerPos(e);
+  const layers = window._layers || [];
+  for(let i = layers.length - 1; i >= 0; i--){
+    const l = layers[i];
+    if(p.x >= l.x && p.x <= l.x + l.w && p.y >= l.y && p.y <= l.y + l.h){
+      const localX = (p.x - l.x) / l.w * l.img.width;
+      const localY = (p.y - l.y) / l.h * l.img.height;
+      if(!isOpaqueAt(l.img, localX, localY)) continue;
+      dragging = { itemId: l.itemId, offX: p.x - l.x, offY: p.y - l.y };
+      dragStartPos = { x: l.x, y: l.y };
+      canvas.classList.add('dragging');
+      break;
+    }
+  }
+  e.preventDefault();
+}
+function moveDrag(e){
+  if(!dragging) return;
+  const p = getPointerPos(e);
+  const pos = positions[dragging.itemId];
+  if(!pos) return;
+  pos.x = p.x - dragging.offX;
+  pos.y = p.y - dragging.offY;
+  render();
+  e.preventDefault();
+}
+function endDrag(){
+  if(dragging){
+    saveAll();
+    const itemId = dragging.itemId;
+    const startPos = dragStartPos;
+    const pos = positions[itemId];
+    if(startPos && pos && (startPos.x !== pos.x || startPos.y !== pos.y)){
+      const endPos = { x: pos.x, y: pos.y };
+      pushUndo({
+        undo: () => { if(positions[itemId]){ positions[itemId].x = startPos.x; positions[itemId].y = startPos.y; saveAll(); render(); } },
+        redo: () => { if(positions[itemId]){ positions[itemId].x = endPos.x; positions[itemId].y = endPos.y; saveAll(); render(); } }
+      });
+    }
+  }
+  dragging = null;
+  dragStartPos = null;
+  canvas.classList.remove('dragging');
+}
+canvas.addEventListener('mousedown', startDrag);
+canvas.addEventListener('mousemove', moveDrag);
+window.addEventListener('mouseup', endDrag);
+canvas.addEventListener('touchstart', startDrag, { passive:false });
+canvas.addEventListener('touchmove', moveDrag, { passive:false });
+window.addEventListener('touchend', endDrag);
+
+(async function init(){
+  await loadAllFromDB();
+  categories.forEach(c => { if(!library[c]) library[c] = []; });
+  activeCat = categories[0] || null;
+
+  for(const cat of categories){
+    for(const item of library[cat] || []){
+      await loadImg(item.dataURL);
+      if(item.backDataURL) await loadImg(item.backDataURL);
+      if(item.fillDataURL) await loadImg(item.fillDataURL);
+      if(item.patternDataURL) await loadImg(item.patternDataURL);
+    }
+  }
+  renderCatTabs();
+  renderThumbs();
+  renderChars();
+  await render();
+  updateBodyDeleteBadge();
+  refreshStorageUsage();
+})();
+</script>
+</body>
+</html>
