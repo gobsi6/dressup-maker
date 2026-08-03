@@ -700,7 +700,8 @@ const LS_COLORS = 'dressup_colors';
 const LS_HIDDEN = 'dressup_hidden';
 const LS_FAV = 'dressup_favcolors';
 const LS_PATTERNS = 'dressup_patterns';
-const ALL_KEYS = [LS_CAT, LS_LIB, LS_POS, LS_BODY, LS_SEL, LS_CHARS, LS_COLORS, LS_HIDDEN, LS_FAV, LS_PATTERNS];
+const LS_LOADED_CHAR = 'dressup_loadedCharacterId';
+const ALL_KEYS = [LS_CAT, LS_LIB, LS_POS, LS_BODY, LS_SEL, LS_CHARS, LS_COLORS, LS_HIDDEN, LS_FAV, LS_PATTERNS, LS_LOADED_CHAR];
 
 // localStorage caps out around 5-10MB, which full-resolution images blow through fast.
 // IndexedDB has a much larger quota (typically a share of free disk space), so all
@@ -775,9 +776,9 @@ async function loadAllFromDB(){
       }
     }
   }
-  const [cat, lib, pos, sel, col, hid, chr, body, fav, pat] = await Promise.all([
+  const [cat, lib, pos, sel, col, hid, chr, body, fav, pat, loadedChar] = await Promise.all([
     idbGet(LS_CAT), idbGet(LS_LIB), idbGet(LS_POS), idbGet(LS_SEL),
-    idbGet(LS_COLORS), idbGet(LS_HIDDEN), idbGet(LS_CHARS), idbGet(LS_BODY), idbGet(LS_FAV), idbGet(LS_PATTERNS)
+    idbGet(LS_COLORS), idbGet(LS_HIDDEN), idbGet(LS_CHARS), idbGet(LS_BODY), idbGet(LS_FAV), idbGet(LS_PATTERNS), idbGet(LS_LOADED_CHAR)
   ]);
   if(cat) categories = cat;
   if(lib) library = lib;
@@ -789,6 +790,7 @@ async function loadAllFromDB(){
   if(body) bodyDataURL = body;
   if(fav) favoriteColors = fav;
   if(pat) patterns = pat;
+  if(loadedChar) loadedCharacterId = loadedChar;
 
   // One-time migration: older versions stored pattern info directly on each item.
   // Move it into the shared `patterns` map (keyed by item id) so it can be
@@ -833,6 +835,7 @@ function saveAll(){
   idbSet(LS_HIDDEN, hiddenCats).catch(err => console.error('save failed', err));
   idbSet(LS_FAV, favoriteColors).catch(err => console.error('save failed', err));
   idbSet(LS_PATTERNS, patterns).catch(err => console.error('save failed', err));
+  idbSet(LS_LOADED_CHAR, loadedCharacterId).catch(err => console.error('save failed', err));
   if(bodyDataURL) idbSet(LS_BODY, bodyDataURL).catch(err => console.error('save failed', err));
   else idbDelete(LS_BODY).catch(err => console.error('save failed', err));
   refreshStorageUsage();
@@ -840,6 +843,7 @@ function saveAll(){
 
 function saveCharacters(){
   idbSet(LS_CHARS, characters).catch(err => console.error('save failed', err));
+  idbSet(LS_LOADED_CHAR, loadedCharacterId).catch(err => console.error('save failed', err));
   refreshStorageUsage();
 }
 
