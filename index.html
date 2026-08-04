@@ -1529,14 +1529,16 @@ function makeStripePatternDataURL(vertical){
 }
 
 function makeCheckerPatternDataURL(){
+  const size = 16;
+  const half = size / 2;
   const c = document.createElement('canvas');
-  c.width = 8; c.height = 8;
+  c.width = size; c.height = size;
   const cx = c.getContext('2d');
   cx.fillStyle = '#ffffff';
-  cx.fillRect(0, 0, 8, 8);
-  cx.fillStyle = '#000000';
-  cx.fillRect(0, 0, 4, 4);
-  cx.fillRect(4, 4, 4, 4);
+  cx.fillRect(0, 0, size, size);
+  cx.fillStyle = 'rgba(0,0,0,0.45)';
+  cx.fillRect(0, 0, size, half); // horizontal band
+  cx.fillRect(0, 0, half, size); // vertical band (overlaps top-left quadrant, darkening it)
   return c.toDataURL('image/png');
 }
 
@@ -1584,7 +1586,7 @@ function makeStarPatternDataURL(){
 const PATTERN_PRESETS = [
   { name: '세로선', gen: () => makeStripePatternDataURL(true) },
   { name: '가로선', gen: () => makeStripePatternDataURL(false) },
-  { name: '체크무늬', gen: () => makeCheckerPatternDataURL() },
+  { name: '깅엄 체크', gen: () => makeCheckerPatternDataURL() },
   { name: '하트', gen: () => makeHeartPatternDataURL() },
   { name: '별', gen: () => makeStarPatternDataURL() }
 ];
