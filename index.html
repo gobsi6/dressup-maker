@@ -752,7 +752,7 @@ async function idbDelete(key){
 let characters = {};
 let colors = {};
 let hiddenCats = {};
-let categories = ['상의','하의','아우터','신발','헤어','액세서리'];
+let categories = ['상의','하의','아우터','신발','액세서리'];
 let library = {};
 let positions = {};
 let selected = {};
@@ -1186,6 +1186,43 @@ function reorderItem(cat, draggedId, targetId){
   });
 }
 
+function moveItemToCategory(itemId, fromCat, toCat){
+  if(!fromCat || !toCat || fromCat === toCat) return;
+  const fromArr = library[fromCat];
+  if(!fromArr) return;
+  const idx = fromArr.findIndex(i => i.id === itemId);
+  if(idx === -1) return;
+  const wasSelected = selected[fromCat] === itemId;
+
+  const doMove = () => {
+    const arr = library[fromCat];
+    const at = arr.findIndex(i => i.id === itemId);
+    if(at === -1) return;
+    const [moved] = arr.splice(at, 1);
+    library[toCat].push(moved);
+    if(selected[fromCat] === itemId) delete selected[fromCat];
+    saveAll();
+    renderCatTabs();
+    renderThumbs();
+    render();
+  };
+  const undoMove = () => {
+    const arr = library[toCat];
+    const at = arr.findIndex(i => i.id === itemId);
+    if(at === -1) return;
+    const [moved] = arr.splice(at, 1);
+    library[fromCat].splice(idx, 0, moved);
+    if(wasSelected) selected[fromCat] = itemId;
+    saveAll();
+    renderCatTabs();
+    renderThumbs();
+    render();
+  };
+
+  doMove();
+  pushUndo({ undo: undoMove, redo: doMove });
+}
+
 const EYE_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_OFF_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.7 21.7 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a21.7 21.7 0 0 1-3.22 4.29"/><path d="M1 1l22 22"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
 const RESET_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>';
@@ -1261,6 +1298,11 @@ function renderCatTabs(){
     row.ondrop = (e) => {
       e.preventDefault();
       row.classList.remove('drag-over');
+      if(e.dataTransfer.types.includes('application/x-dressup-item')){
+        const draggedItemId = e.dataTransfer.getData('application/x-dressup-item');
+        moveItemToCategory(draggedItemId, activeCat, cat);
+        return;
+      }
       const draggedCat = e.dataTransfer.getData('text/plain');
       reorderCategory(draggedCat, cat);
     };
@@ -1782,6 +1824,7 @@ function renderThumbs(){
     t.ondragstart = (e) => {
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', item.id);
+      e.dataTransfer.setData('application/x-dressup-item', item.id);
       t.classList.add('dragging');
     };
     t.ondragend = () => { t.classList.remove('dragging'); };
@@ -1790,7 +1833,8 @@ function renderThumbs(){
     t.ondrop = (e) => {
       e.preventDefault();
       t.classList.remove('drag-over');
-      const draggedId = e.dataTransfer.getData('text/plain');
+      if(!e.dataTransfer.types.includes('application/x-dressup-item')) return;
+      const draggedId = e.dataTransfer.getData('application/x-dressup-item');
       reorderItem(activeCat, draggedId, item.id);
     };
     const img = document.createElement('img');
@@ -2283,7 +2327,7 @@ document.getElementById('importDataInput').onchange = async (e) => {
     e.target.value = '';
     return;
   }
-  categories = data.categories || ['상의','하의','아우터','신발','헤어','액세서리'];
+  categories = data.categories || ['상의','하의','아우터','신발','액세서리'];
   library = data.library || {};
   positions = data.positions || {};
   selected = data.selected || {};
