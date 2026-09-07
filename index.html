@@ -300,6 +300,7 @@
   }
   .cat-icon-btn:hover{ color:var(--danger); background:var(--panel); }
   .cat-icon-btn.vis-toggle:hover{ color:var(--accent); }
+  .cat-icon-btn.multi-toggle:hover{ color:var(--accent); }
   .cat-tab-row.hidden-cat{ opacity:0.55; }
   .cat-tab-row.hidden-cat .vis-toggle{ color:var(--accent); }
 
@@ -701,7 +702,8 @@ const LS_HIDDEN = 'dressup_hidden';
 const LS_FAV = 'dressup_favcolors';
 const LS_PATTERNS = 'dressup_patterns';
 const LS_LOADED_CHAR = 'dressup_loadedCharacterId';
-const ALL_KEYS = [LS_CAT, LS_LIB, LS_POS, LS_BODY, LS_SEL, LS_CHARS, LS_COLORS, LS_HIDDEN, LS_FAV, LS_PATTERNS, LS_LOADED_CHAR];
+const LS_MULTI = 'dressup_multiSelectCats';
+const ALL_KEYS = [LS_CAT, LS_LIB, LS_POS, LS_BODY, LS_SEL, LS_CHARS, LS_COLORS, LS_HIDDEN, LS_FAV, LS_PATTERNS, LS_LOADED_CHAR, LS_MULTI];
 
 // localStorage caps out around 5-10MB, which full-resolution images blow through fast.
 // IndexedDB has a much larger quota (typically a share of free disk space), so all
@@ -752,6 +754,7 @@ async function idbDelete(key){
 let characters = {};
 let colors = {};
 let hiddenCats = {};
+let multiSelectCats = {};
 let categories = ['상의','하의','아우터','신발','액세서리'];
 let library = {};
 let positions = {};
@@ -776,9 +779,9 @@ async function loadAllFromDB(){
       }
     }
   }
-  const [cat, lib, pos, sel, col, hid, chr, body, fav, pat, loadedChar] = await Promise.all([
+  const [cat, lib, pos, sel, col, hid, chr, body, fav, pat, loadedChar, multi] = await Promise.all([
     idbGet(LS_CAT), idbGet(LS_LIB), idbGet(LS_POS), idbGet(LS_SEL),
-    idbGet(LS_COLORS), idbGet(LS_HIDDEN), idbGet(LS_CHARS), idbGet(LS_BODY), idbGet(LS_FAV), idbGet(LS_PATTERNS), idbGet(LS_LOADED_CHAR)
+    idbGet(LS_COLORS), idbGet(LS_HIDDEN), idbGet(LS_CHARS), idbGet(LS_BODY), idbGet(LS_FAV), idbGet(LS_PATTERNS), idbGet(LS_LOADED_CHAR), idbGet(LS_MULTI)
   ]);
   if(cat) categories = cat;
   if(lib) library = lib;
@@ -791,6 +794,7 @@ async function loadAllFromDB(){
   if(fav) favoriteColors = fav;
   if(pat) patterns = pat;
   if(loadedChar) loadedCharacterId = loadedChar;
+  if(multi) multiSelectCats = multi;
 
   // One-time migration: older versions stored pattern info directly on each item.
   // Move it into the shared `patterns` map (keyed by item id) so it can be
@@ -836,6 +840,7 @@ function saveAll(){
   idbSet(LS_FAV, favoriteColors).catch(err => console.error('save failed', err));
   idbSet(LS_PATTERNS, patterns).catch(err => console.error('save failed', err));
   idbSet(LS_LOADED_CHAR, loadedCharacterId).catch(err => console.error('save failed', err));
+  idbSet(LS_MULTI, multiSelectCats).catch(err => console.error('save failed', err));
   if(bodyDataURL) idbSet(LS_BODY, bodyDataURL).catch(err => console.error('save failed', err));
   else idbDelete(LS_BODY).catch(err => console.error('save failed', err));
   refreshStorageUsage();
@@ -902,7 +907,7 @@ async function saveCurrentAsCharacter(){
       const newCharObj = {
         name: existingName,
         body: bodyDataURL,
-        selected: { ...selected },
+        selected: JSON.parse(JSON.stringify(selected)),
         positions: JSON.parse(JSON.stringify(positions)),
         colors: JSON.parse(JSON.stringify(colors)),
         patterns: JSON.parse(JSON.stringify(patterns)),
@@ -930,7 +935,7 @@ async function saveCurrentAsCharacter(){
   characters[id] = {
     name,
     body: bodyDataURL,
-    selected: { ...selected },
+    selected: JSON.parse(JSON.stringify(selected)),
     positions: JSON.parse(JSON.stringify(positions)),
     colors: JSON.parse(JSON.stringify(colors)),
     patterns: JSON.parse(JSON.stringify(patterns)),
@@ -947,13 +952,12 @@ async function loadCharacter(id){
   loadedCharacterId = id;
   bodyDataURL = c.body;
   bodyImg = null;
-  selected = { ...c.selected };
+  selected = c.selected ? JSON.parse(JSON.stringify(c.selected)) : {};
   positions = JSON.parse(JSON.stringify(c.positions));
   colors = c.colors ? JSON.parse(JSON.stringify(c.colors)) : {};
   patterns = c.patterns ? JSON.parse(JSON.stringify(c.patterns)) : {};
   for(const cat of categories){
-    const itemId = selected[cat];
-    if(itemId){
+    for(const itemId of getSelectedIds(cat)){
       const item = (library[cat] || []).find(i => i.id === itemId);
       if(item){
         await loadImg(item.dataURL);
@@ -1058,8 +1062,7 @@ async function getFrontBackLayers(){
   const frontLayers = [];
   for(const cat of [...categories].reverse()){
     if(hiddenCats[cat]) continue;
-    const itemId = selected[cat];
-    if(!itemId) continue;
+    for(const itemId of getSelectedIds(cat)){
     const item = (library[cat] || []).find(i => i.id === itemId);
     if(!item) continue;
     const img = await loadImg(item.dataURL);
@@ -1094,6 +1097,7 @@ async function getFrontBackLayers(){
     if(item.backDataURL){
       const backImg = await loadImg(item.backDataURL);
       backLayers.push({ cat, itemId, img: getLayerImage(itemId, backImg, 'back'), ...pos });
+    }
     }
   }
   return { backLayers, frontLayers };
@@ -1155,6 +1159,35 @@ function startRenameCategory(row, cat){
   };
 }
 
+function getSelectedIds(cat){
+  const v = selected[cat];
+  const ids = Array.isArray(v) ? v : (v ? [v] : []);
+  if(ids.length <= 1) return ids;
+  const idSet = new Set(ids);
+  const ordered = (library[cat] || []).filter(i => idSet.has(i.id)).map(i => i.id);
+  const missing = ids.filter(id => !ordered.includes(id));
+  return [...ordered, ...missing];
+}
+
+function toggleMultiSelect(cat){
+  if(multiSelectCats[cat]){
+    delete multiSelectCats[cat];
+    if(Array.isArray(selected[cat])){
+      if(selected[cat].length > 0) selected[cat] = selected[cat][0];
+      else delete selected[cat];
+    }
+  } else {
+    multiSelectCats[cat] = true;
+    if(selected[cat] && !Array.isArray(selected[cat])){
+      selected[cat] = [selected[cat]];
+    }
+  }
+  saveAll();
+  renderCatTabs();
+  renderThumbs();
+  render();
+}
+
 function reorderCategory(draggedCat, targetCat){
   const fromIdx = categories.indexOf(draggedCat);
   const toIdx = categories.indexOf(targetCat);
@@ -1192,7 +1225,23 @@ function moveItemToCategory(itemId, fromCat, toCat){
   if(!fromArr) return;
   const idx = fromArr.findIndex(i => i.id === itemId);
   if(idx === -1) return;
-  const wasSelected = selected[fromCat] === itemId;
+  const wasSelected = getSelectedIds(fromCat).includes(itemId);
+
+  const removeFromSelection = (cat, id) => {
+    if(multiSelectCats[cat]){
+      if(Array.isArray(selected[cat])) selected[cat] = selected[cat].filter(x => x !== id);
+    } else if(selected[cat] === id){
+      delete selected[cat];
+    }
+  };
+  const restoreSelection = (cat, id) => {
+    if(multiSelectCats[cat]){
+      const arr = Array.isArray(selected[cat]) ? selected[cat] : [];
+      selected[cat] = [...arr, id];
+    } else {
+      selected[cat] = id;
+    }
+  };
 
   const doMove = () => {
     const arr = library[fromCat];
@@ -1200,7 +1249,7 @@ function moveItemToCategory(itemId, fromCat, toCat){
     if(at === -1) return;
     const [moved] = arr.splice(at, 1);
     library[toCat].push(moved);
-    if(selected[fromCat] === itemId) delete selected[fromCat];
+    removeFromSelection(fromCat, itemId);
     saveAll();
     renderCatTabs();
     renderThumbs();
@@ -1212,7 +1261,7 @@ function moveItemToCategory(itemId, fromCat, toCat){
     if(at === -1) return;
     const [moved] = arr.splice(at, 1);
     library[fromCat].splice(idx, 0, moved);
-    if(wasSelected) selected[fromCat] = itemId;
+    if(wasSelected) restoreSelection(fromCat, itemId);
     saveAll();
     renderCatTabs();
     renderThumbs();
@@ -1225,6 +1274,8 @@ function moveItemToCategory(itemId, fromCat, toCat){
 
 const EYE_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
 const EYE_OFF_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.7 21.7 0 0 1 5.06-5.94"/><path d="M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a21.7 21.7 0 0 1-3.22 4.29"/><path d="M1 1l22 22"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+const MULTI_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/></svg>';
+const MULTI_ICON_CHECKED = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M7 13l3 3 7-7"/></svg>';
 const RESET_ICON = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>';
 const LAYERS_ICON = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>';
 const FILL_ICON = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 11l-8-8-8.5 8.5a2 2 0 0 0 0 2.8l5.7 5.7a2 2 0 0 0 2.8 0L19 11z"/><path d="M5 2l4 4"/><path d="M2 15s0 4 3 4 3-2 3-2"/></svg>';
@@ -1332,6 +1383,16 @@ function renderCatTabs(){
       render();
     };
     row.appendChild(vis);
+
+    const multi = document.createElement('button');
+    multi.className = 'cat-icon-btn multi-toggle';
+    multi.innerHTML = multiSelectCats[cat] ? MULTI_ICON_CHECKED : MULTI_ICON;
+    multi.title = multiSelectCats[cat] ? '다중 선택 끄기' : '다중 선택 켜기 (여러 개 동시 착용)';
+    multi.onclick = (e) => {
+      e.stopPropagation();
+      toggleMultiSelect(cat);
+    };
+    row.appendChild(multi);
 
     const del = document.createElement('button');
     del.className = 'cat-icon-btn';
@@ -1820,7 +1881,8 @@ function renderThumbs(){
   label.textContent = activeCat;
   (library[activeCat] || []).forEach(item => {
     const t = document.createElement('div');
-    t.className = 'thumb' + (selected[activeCat] === item.id ? ' selected' : '');
+    const isSelectedNow = multiSelectCats[activeCat] ? getSelectedIds(activeCat).includes(item.id) : selected[activeCat] === item.id;
+    t.className = 'thumb' + (isSelectedNow ? ' selected' : '');
     t.dataset.itemId = item.id;
     t.draggable = true;
     t.ondragstart = (e) => {
@@ -1854,14 +1916,18 @@ function renderThumbs(){
       const cat = activeCat;
       const idx = library[cat].findIndex(i => i.id === item.id);
       const removedItem = library[cat][idx];
-      const wasSelected = selected[cat] === item.id;
+      const wasSelected = getSelectedIds(cat).includes(item.id);
       const oldPos = positions[item.id];
       const oldColor = colors[item.id];
       const oldPattern = patterns[item.id];
 
       const doDelete = () => {
         library[cat] = library[cat].filter(i => i.id !== item.id);
-        if(selected[cat] === item.id) delete selected[cat];
+        if(multiSelectCats[cat]){
+          if(Array.isArray(selected[cat])) selected[cat] = selected[cat].filter(id => id !== item.id);
+        } else if(selected[cat] === item.id){
+          delete selected[cat];
+        }
         delete positions[item.id];
         delete colors[item.id];
         delete patterns[item.id];
@@ -1875,7 +1941,14 @@ function renderThumbs(){
       pushUndo({
         undo: () => {
           library[cat].splice(idx, 0, removedItem);
-          if(wasSelected) selected[cat] = item.id;
+          if(wasSelected){
+            if(multiSelectCats[cat]){
+              const arr = Array.isArray(selected[cat]) ? selected[cat] : [];
+              selected[cat] = [...arr, item.id];
+            } else {
+              selected[cat] = item.id;
+            }
+          }
           if(oldPos) positions[item.id] = oldPos;
           if(oldColor) colors[item.id] = oldColor;
           if(oldPattern) patterns[item.id] = oldPattern;
@@ -2104,6 +2177,23 @@ function renderThumbs(){
 
     t.onclick = async () => {
       const cat = activeCat;
+
+      if(multiSelectCats[cat]){
+        const oldArr = getSelectedIds(cat).slice();
+        const idx = oldArr.indexOf(item.id);
+        const newArr = idx === -1 ? [...oldArr, item.id] : oldArr.filter(id => id !== item.id);
+        selected[cat] = newArr;
+        saveAll();
+        renderThumbs();
+        if(idx === -1) await loadImg(item.dataURL);
+        render();
+        pushUndo({
+          undo: () => { selected[cat] = oldArr; saveAll(); renderThumbs(); render(); },
+          redo: () => { selected[cat] = newArr; saveAll(); renderThumbs(); render(); }
+        });
+        return;
+      }
+
       const oldSelected = selected[cat];
       if(selected[cat] === item.id){
         delete selected[cat];
@@ -2300,7 +2390,7 @@ document.getElementById('exportDataBtn').onclick = () => {
     type: 'dressup-maker-backup',
     version: 1,
     exportedAt: new Date().toISOString(),
-    categories, library, positions, selected, colors, hiddenCats, characters, favoriteColors, patterns,
+    categories, library, positions, selected, colors, hiddenCats, characters, favoriteColors, patterns, multiSelectCats,
     body: bodyDataURL
   };
   const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
@@ -2336,6 +2426,7 @@ document.getElementById('importDataInput').onchange = async (e) => {
   colors = data.colors || {};
   hiddenCats = data.hiddenCats || {};
   patterns = data.patterns || {};
+  multiSelectCats = data.multiSelectCats || {};
   characters = { ...characters, ...(data.characters || {}) };
   favoriteColors = [...new Set([...favoriteColors, ...(data.favoriteColors || [])])].slice(0, 12);
   bodyDataURL = data.body || null;
