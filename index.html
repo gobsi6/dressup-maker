@@ -1164,7 +1164,7 @@ function getSelectedIds(cat){
   const ids = Array.isArray(v) ? v : (v ? [v] : []);
   if(ids.length <= 1) return ids;
   const idSet = new Set(ids);
-  const ordered = (library[cat] || []).filter(i => idSet.has(i.id)).map(i => i.id);
+  const ordered = (library[cat] || []).filter(i => idSet.has(i.id)).map(i => i.id).reverse();
   const missing = ids.filter(id => !ordered.includes(id));
   return [...ordered, ...missing];
 }
