@@ -1211,6 +1211,7 @@ function reorderItem(cat, draggedId, targetId){
     a.splice(to, 0, moved);
     saveAll();
     renderThumbs();
+    render();
   };
   move(fromIdx, toIdx);
   pushUndo({
