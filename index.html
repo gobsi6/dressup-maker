@@ -520,6 +520,42 @@
     flex-direction:column;
     max-width:200px;
   }
+  .padding-popup{
+    flex-direction:column;
+    width:210px;
+  }
+  .padding-popup-info{
+    font-size:11px;
+    line-height:1.6;
+    color:var(--text-dim);
+    margin-bottom:12px;
+  }
+  .padding-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-bottom:10px;
+  }
+  .padding-field{
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+  }
+  .padding-field span{
+    font-size:10.5px;
+    color:var(--text-dim);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .padding-field input{
+    width:100%;
+    font-family:'Inter', sans-serif;
+    font-size:13px;
+    color:var(--text);
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 8px;
+  }
   .pattern-popup .preset-row{
     display:flex;
     gap:6px;
@@ -717,6 +753,7 @@
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M21 13a9 9 0 1 0-3 6.7"/></svg>
         </button>
         <button class="btn" id="resetBtn">전체 초기화</button>
+        <button class="btn" id="paddingBtn" title="캔버스에 여백을 추가해서 모자 등 여유 공간이 필요한 아이템을 놓을 수 있어요">여백 추가</button>
         <button class="btn primary" id="exportBtn">PNG로 저장</button>
       </div>
       <div class="mirror-frame">
@@ -755,7 +792,8 @@ const LS_FAV = 'dressup_favcolors';
 const LS_PATTERNS = 'dressup_patterns';
 const LS_LOADED_CHAR = 'dressup_loadedCharacterId';
 const LS_MULTI = 'dressup_multiSelectCats';
-const ALL_KEYS = [LS_CAT, LS_LIB, LS_POS, LS_BODY, LS_SEL, LS_CHARS, LS_COLORS, LS_HIDDEN, LS_FAV, LS_PATTERNS, LS_LOADED_CHAR, LS_MULTI];
+const LS_PADDING = 'dressup_canvasPadding';
+const ALL_KEYS = [LS_CAT, LS_LIB, LS_POS, LS_BODY, LS_SEL, LS_CHARS, LS_COLORS, LS_HIDDEN, LS_FAV, LS_PATTERNS, LS_LOADED_CHAR, LS_MULTI, LS_PADDING];
 
 // localStorage caps out around 5-10MB, which full-resolution images blow through fast.
 // IndexedDB has a much larger quota (typically a share of free disk space), so all
@@ -807,6 +845,7 @@ let characters = {};
 let colors = {};
 let hiddenCats = {};
 let multiSelectCats = {};
+let canvasPadding = { top: 0, right: 0, bottom: 0, left: 0 };
 let categories = ['상의','하의','아우터','신발','액세서리'];
 let library = {};
 let positions = {};
@@ -831,9 +870,9 @@ async function loadAllFromDB(){
       }
     }
   }
-  const [cat, lib, pos, sel, col, hid, chr, body, fav, pat, loadedChar, multi] = await Promise.all([
+  const [cat, lib, pos, sel, col, hid, chr, body, fav, pat, loadedChar, multi, pad] = await Promise.all([
     idbGet(LS_CAT), idbGet(LS_LIB), idbGet(LS_POS), idbGet(LS_SEL),
-    idbGet(LS_COLORS), idbGet(LS_HIDDEN), idbGet(LS_CHARS), idbGet(LS_BODY), idbGet(LS_FAV), idbGet(LS_PATTERNS), idbGet(LS_LOADED_CHAR), idbGet(LS_MULTI)
+    idbGet(LS_COLORS), idbGet(LS_HIDDEN), idbGet(LS_CHARS), idbGet(LS_BODY), idbGet(LS_FAV), idbGet(LS_PATTERNS), idbGet(LS_LOADED_CHAR), idbGet(LS_MULTI), idbGet(LS_PADDING)
   ]);
   if(cat) categories = cat;
   if(lib) library = lib;
@@ -847,6 +886,7 @@ async function loadAllFromDB(){
   if(pat) patterns = pat;
   if(loadedChar) loadedCharacterId = loadedChar;
   if(multi) multiSelectCats = multi;
+  if(pad) canvasPadding = pad;
 
   // One-time migration: older versions stored pattern info directly on each item.
   // Move it into the shared `patterns` map (keyed by item id) so it can be
@@ -893,6 +933,7 @@ function saveAll(){
   idbSet(LS_PATTERNS, patterns).catch(err => console.error('save failed', err));
   idbSet(LS_LOADED_CHAR, loadedCharacterId).catch(err => console.error('save failed', err));
   idbSet(LS_MULTI, multiSelectCats).catch(err => console.error('save failed', err));
+  idbSet(LS_PADDING, canvasPadding).catch(err => console.error('save failed', err));
   if(bodyDataURL) idbSet(LS_BODY, bodyDataURL).catch(err => console.error('save failed', err));
   else idbDelete(LS_BODY).catch(err => console.error('save failed', err));
   refreshStorageUsage();
@@ -963,6 +1004,7 @@ async function saveCurrentAsCharacter(){
         positions: JSON.parse(JSON.stringify(positions)),
         colors: JSON.parse(JSON.stringify(colors)),
         patterns: JSON.parse(JSON.stringify(patterns)),
+        padding: JSON.parse(JSON.stringify(canvasPadding)),
         thumb
       };
       const oldCharObj = characters[loadedCharacterId];
@@ -991,6 +1033,7 @@ async function saveCurrentAsCharacter(){
     positions: JSON.parse(JSON.stringify(positions)),
     colors: JSON.parse(JSON.stringify(colors)),
     patterns: JSON.parse(JSON.stringify(patterns)),
+    padding: JSON.parse(JSON.stringify(canvasPadding)),
     thumb
   };
   loadedCharacterId = id;
@@ -1008,6 +1051,7 @@ async function loadCharacter(id){
   positions = JSON.parse(JSON.stringify(c.positions));
   colors = c.colors ? JSON.parse(JSON.stringify(c.colors)) : {};
   patterns = c.patterns ? JSON.parse(JSON.stringify(c.patterns)) : {};
+  canvasPadding = c.padding ? JSON.parse(JSON.stringify(c.padding)) : { top: 0, right: 0, bottom: 0, left: 0 };
   for(const cat of categories){
     for(const itemId of getSelectedIds(cat)){
       const item = (library[cat] || []).find(i => i.id === itemId);
@@ -1159,16 +1203,19 @@ async function render(){
   if(bodyDataURL){
     if(!bodyImg || bodyImg.src !== bodyDataURL){
       bodyImg = await loadImg(bodyDataURL);
-      canvas.width = bodyImg.naturalWidth;
-      canvas.height = bodyImg.naturalHeight;
     }
+  }
+  const padT = canvasPadding.top || 0, padR = canvasPadding.right || 0, padB = canvasPadding.bottom || 0, padL = canvasPadding.left || 0;
+  if(bodyDataURL && bodyImg){
+    canvas.width = bodyImg.naturalWidth + padL + padR;
+    canvas.height = bodyImg.naturalHeight + padT + padB;
   }
   const CW = canvas.width, CH = canvas.height;
   ctx.clearRect(0,0,CW,CH);
   const { backLayers, frontLayers } = await getFrontBackLayers();
   backLayers.forEach(l => ctx.drawImage(l.img, l.x, l.y, l.w, l.h));
   if(bodyDataURL && bodyImg){
-    ctx.drawImage(bodyImg, 0, 0, CW, CH);
+    ctx.drawImage(bodyImg, padL, padT, bodyImg.naturalWidth, bodyImg.naturalHeight);
   }
   frontLayers.forEach(l => ctx.drawImage(l.img, l.x, l.y, l.w, l.h));
   window._layers = frontLayers;
@@ -1209,6 +1256,21 @@ function startRenameCategory(row, cat){
     if(e.key === 'Enter'){ e.preventDefault(); input.blur(); }
     else if(e.key === 'Escape'){ done = true; renderCatTabs(); }
   };
+}
+
+function applyCanvasPadding(newPadding){
+  const old = canvasPadding;
+  const dLeft = (newPadding.left || 0) - (old.left || 0);
+  const dTop = (newPadding.top || 0) - (old.top || 0);
+  if(dLeft || dTop){
+    Object.values(positions).forEach(pos => {
+      pos.x += dLeft;
+      pos.y += dTop;
+    });
+  }
+  canvasPadding = { ...newPadding };
+  saveAll();
+  render();
 }
 
 function getSelectedIds(cat){
@@ -2501,7 +2563,7 @@ document.getElementById('exportDataBtn').onclick = () => {
     type: 'dressup-maker-backup',
     version: 1,
     exportedAt: new Date().toISOString(),
-    categories, library, positions, selected, colors, hiddenCats, characters, favoriteColors, patterns, multiSelectCats,
+    categories, library, positions, selected, colors, hiddenCats, characters, favoriteColors, patterns, multiSelectCats, canvasPadding,
     body: bodyDataURL
   };
   const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
@@ -2547,6 +2609,7 @@ document.getElementById('importDataInput').onchange = async (e) => {
     hiddenCats = data.hiddenCats || {};
     patterns = data.patterns || {};
     multiSelectCats = data.multiSelectCats || {};
+    canvasPadding = data.canvasPadding || { top: 0, right: 0, bottom: 0, left: 0 };
     bodyDataURL = data.body || null;
     bodyImg = null;
   } else {
@@ -2617,6 +2680,61 @@ document.getElementById('importDataInput').onchange = async (e) => {
   updateBodyDeleteBadge();
   e.target.value = '';
   alert(wantsOverwrite ? '덮어쓰기가 완료됐어요.' : '기존 아이템은 그대로 두고 추가했어요.');
+};
+
+document.getElementById('paddingBtn').onclick = (e) => {
+  e.stopPropagation();
+  closeAllItemMenus();
+  const rect = e.currentTarget.getBoundingClientRect();
+  const pop = document.createElement('div');
+  pop.className = 'fav-popup padding-popup';
+  pop.style.top = (rect.bottom + 5) + 'px';
+  pop.style.left = Math.min(rect.left, window.innerWidth - 230) + 'px';
+  pop.onclick = ev => ev.stopPropagation();
+
+  const info = document.createElement('div');
+  info.className = 'padding-popup-info';
+  info.textContent = '캔버스 바깥으로 여백을 늘려요. 이미 배치된 옷들은 캐릭터와 함께 자동으로 밀려서 위치가 흐트러지지 않아요.';
+  pop.appendChild(info);
+
+  const grid = document.createElement('div');
+  grid.className = 'padding-grid';
+
+  const makeField = (label, key) => {
+    const wrap = document.createElement('label');
+    wrap.className = 'padding-field';
+    const span = document.createElement('span');
+    span.textContent = label;
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.step = '10';
+    input.value = canvasPadding[key] || 0;
+    input.oninput = () => {
+      const next = { ...canvasPadding, [key]: Math.max(0, parseInt(input.value, 10) || 0) };
+      applyCanvasPadding(next);
+    };
+    wrap.appendChild(span);
+    wrap.appendChild(input);
+    return wrap;
+  };
+
+  grid.appendChild(makeField('위', 'top'));
+  grid.appendChild(makeField('오른쪽', 'right'));
+  grid.appendChild(makeField('아래', 'bottom'));
+  grid.appendChild(makeField('왼쪽', 'left'));
+  pop.appendChild(grid);
+
+  const resetBtn = document.createElement('button');
+  resetBtn.className = 'item-menu-row';
+  resetBtn.innerHTML = '<span>여백 초기화</span>';
+  resetBtn.onclick = () => {
+    applyCanvasPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+    closeAllItemMenus();
+  };
+  pop.appendChild(resetBtn);
+
+  document.body.appendChild(pop);
 };
 
 document.getElementById('resetBtn').onclick = () => {
