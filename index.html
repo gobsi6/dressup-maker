@@ -111,6 +111,17 @@
     align-items:center;
     gap:8px;
   }
+  .items-panel-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .items-panel-header .section-label{
+    flex:1;
+    min-width:0;
+  }
   .section-label::after{
     content:'';
     flex:1;
@@ -427,6 +438,44 @@
     cursor:pointer; opacity:0; transition:opacity .15s;
   }
   .thumb:hover .fav-open-btn{ opacity:1; }
+  .modal-overlay{
+    position:fixed;
+    top:0; left:0; right:0; bottom:0;
+    background:rgba(58,53,44,0.35);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:2000;
+  }
+  .modal-box{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:18px;
+    box-shadow:var(--shadow);
+    padding:26px;
+    max-width:320px;
+    width:calc(100% - 40px);
+  }
+  .modal-title{
+    font-family:'Jua', sans-serif;
+    font-size:19px;
+    color:var(--text);
+    margin-bottom:8px;
+  }
+  .modal-desc{
+    font-size:13px;
+    line-height:1.6;
+    color:var(--text-dim);
+    margin-bottom:20px;
+  }
+  .modal-btn-row{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .modal-btn-row .btn{
+    width:100%;
+  }
   .fav-popup{
     position:fixed;
     background:var(--panel);
@@ -677,7 +726,10 @@
     </main>
 
     <aside class="card items-panel">
-      <div class="section-label" id="thumbLabel">아이템</div>
+      <div class="items-panel-header">
+        <div class="section-label" id="thumbLabel" style="margin-bottom:0;">아이템</div>
+        <button class="btn small" id="clearAllItemsBtn" title="모든 카테고리의 아이템을 전부 삭제">전체 삭제</button>
+      </div>
       <div class="thumb-grid" id="thumbGrid"></div>
       <input type="file" id="itemFileInput" accept="image/*" multiple>
       <input type="file" id="backLayerInput" accept="image/*">
@@ -1290,6 +1342,64 @@ const COPY_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" s
 const STAR_ICON = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
 const PALETTE_ICON = '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="12" cy="7.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="15.5" cy="10.5" r="1.3" fill="currentColor" stroke="none"/><circle cx="13" cy="15.5" r="1.3" fill="currentColor" stroke="none"/></svg>';
 let editUploadTargetItemId = null;
+
+function showImportChoiceModal(){
+  return new Promise((resolve) => {
+    let resolved = false;
+    const finish = (value) => {
+      if(resolved) return;
+      resolved = true;
+      overlay.remove();
+      resolve(value);
+    };
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.onclick = () => finish('cancel');
+
+    const box = document.createElement('div');
+    box.className = 'modal-box';
+    box.onclick = ev => ev.stopPropagation();
+
+    const title = document.createElement('div');
+    title.className = 'modal-title';
+    title.textContent = '데이터 가져오기';
+    box.appendChild(title);
+
+    const desc = document.createElement('div');
+    desc.className = 'modal-desc';
+    desc.textContent = '가져온 파일을 지금 데이터에 어떻게 반영할까요?';
+    box.appendChild(desc);
+
+    const btnRow = document.createElement('div');
+    btnRow.className = 'modal-btn-row';
+
+    const overwriteBtn = document.createElement('button');
+    overwriteBtn.className = 'btn primary';
+    overwriteBtn.textContent = '교체하기';
+    overwriteBtn.title = '기존 아이템을 지우고 파일 내용으로 교체해요';
+    overwriteBtn.onclick = () => finish('overwrite');
+
+    const mergeBtn = document.createElement('button');
+    mergeBtn.className = 'btn';
+    mergeBtn.textContent = '병합하기';
+    mergeBtn.title = '기존 아이템은 그대로 두고, 파일의 아이템을 추가해요';
+    mergeBtn.onclick = () => finish('merge');
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn';
+    cancelBtn.textContent = '취소';
+    cancelBtn.onclick = () => finish('cancel');
+
+    btnRow.appendChild(overwriteBtn);
+    btnRow.appendChild(mergeBtn);
+    btnRow.appendChild(cancelBtn);
+    box.appendChild(btnRow);
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+  });
+}
 
 function closeAllItemMenus(){
   document.querySelectorAll('.item-menu, .fav-popup').forEach(m => m.remove());
@@ -2416,27 +2526,70 @@ document.getElementById('importDataInput').onchange = async (e) => {
     e.target.value = '';
     return;
   }
-  if(!confirm('지금 브라우저에 있는 데이터를 이 파일 내용으로 덮어씁니다. 계속할까요?')){
+
+  const choice = await showImportChoiceModal();
+  if(choice === 'cancel'){
     e.target.value = '';
     return;
   }
-  categories = data.categories || ['상의','하의','아우터','신발','액세서리'];
-  library = data.library || {};
-  positions = data.positions || {};
-  selected = data.selected || {};
-  colors = data.colors || {};
-  hiddenCats = data.hiddenCats || {};
-  patterns = data.patterns || {};
-  multiSelectCats = data.multiSelectCats || {};
-  characters = { ...characters, ...(data.characters || {}) };
-  favoriteColors = [...new Set([...favoriteColors, ...(data.favoriteColors || [])])].slice(0, 12);
-  bodyDataURL = data.body || null;
-  bodyImg = null;
-  activeCat = categories[0] || null;
+  const wantsOverwrite = choice === 'overwrite';
 
   undoStack = [];
   redoStack = [];
   updateUndoRedoUI();
+
+  if(wantsOverwrite){
+    categories = data.categories || ['상의','하의','아우터','신발','액세서리'];
+    library = data.library || {};
+    positions = data.positions || {};
+    selected = data.selected || {};
+    colors = data.colors || {};
+    hiddenCats = data.hiddenCats || {};
+    patterns = data.patterns || {};
+    multiSelectCats = data.multiSelectCats || {};
+    bodyDataURL = data.body || null;
+    bodyImg = null;
+  } else {
+    const idMap = {};
+    const allExistingIds = new Set();
+    categories.forEach(cat => (library[cat] || []).forEach(i => allExistingIds.add(i.id)));
+
+    const importedCats = data.categories || [];
+    importedCats.forEach(cat => {
+      if(!categories.includes(cat)) categories.push(cat);
+      if(!library[cat]) library[cat] = [];
+      ((data.library || {})[cat] || []).forEach(item => {
+        const newItem = { ...item };
+        if(allExistingIds.has(item.id)){
+          const newId = 'i' + Date.now() + Math.random().toString(36).slice(2, 7);
+          idMap[item.id] = newId;
+          newItem.id = newId;
+        }
+        allExistingIds.add(newItem.id);
+        library[cat].push(newItem);
+      });
+    });
+
+    const remapAndMerge = (target, source) => {
+      Object.entries(source || {}).forEach(([id, val]) => {
+        const newId = idMap[id] || id;
+        if(!(newId in target)) target[newId] = val;
+      });
+    };
+    remapAndMerge(positions, data.positions);
+    remapAndMerge(colors, data.colors);
+    remapAndMerge(patterns, data.patterns);
+
+    // hiddenCats / multiSelectCats: only fill in for categories that didn't already have a setting
+    Object.entries(data.hiddenCats || {}).forEach(([cat, v]) => { if(!(cat in hiddenCats)) hiddenCats[cat] = v; });
+    Object.entries(data.multiSelectCats || {}).forEach(([cat, v]) => { if(!(cat in multiSelectCats)) multiSelectCats[cat] = v; });
+    // body image: keep current one if already set, otherwise take the imported one
+    if(!bodyDataURL && data.body){ bodyDataURL = data.body; bodyImg = null; }
+  }
+
+  characters = { ...characters, ...(data.characters || {}) };
+  favoriteColors = [...new Set([...favoriteColors, ...(data.favoriteColors || [])])].slice(0, 12);
+  activeCat = categories[0] || null;
 
   Object.keys(imgCache).forEach(k => delete imgCache[k]);
   Object.keys(cropCache).forEach(k => delete cropCache[k]);
@@ -2463,7 +2616,7 @@ document.getElementById('importDataInput').onchange = async (e) => {
   await render();
   updateBodyDeleteBadge();
   e.target.value = '';
-  alert('불러오기가 완료됐어요.');
+  alert(wantsOverwrite ? '덮어쓰기가 완료됐어요.' : '기존 아이템은 그대로 두고 추가했어요.');
 };
 
 document.getElementById('resetBtn').onclick = () => {
@@ -2481,6 +2634,56 @@ document.getElementById('resetBtn').onclick = () => {
   });
 };
 
+document.getElementById('clearAllItemsBtn').onclick = () => {
+  const totalCount = categories.reduce((sum, cat) => sum + (library[cat] || []).length, 0);
+  if(totalCount === 0){ alert('삭제할 아이템이 없어요.'); return; }
+  if(!confirm(`정말로 모든 카테고리의 아이템 ${totalCount}개를 전부 삭제할까요?\n색상, 레이어, 패턴 설정도 함께 사라져요. (삭제 직후라면 Ctrl+Z로 되돌릴 수 있어요)`)) return;
+
+  const oldLibrary = JSON.parse(JSON.stringify(library));
+  const oldSelected = JSON.parse(JSON.stringify(selected));
+  const oldPositions = JSON.parse(JSON.stringify(positions));
+  const oldColors = JSON.parse(JSON.stringify(colors));
+  const oldPatterns = JSON.parse(JSON.stringify(patterns));
+
+  const clearCaches = () => {
+    Object.keys(imgCache).forEach(k => delete imgCache[k]);
+    Object.keys(cropCache).forEach(k => delete cropCache[k]);
+    Object.keys(cropBoundsCache).forEach(k => delete cropBoundsCache[k]);
+    Object.keys(thumbDisplayCache).forEach(k => delete thumbDisplayCache[k]);
+    Object.keys(layerTintCache).forEach(k => delete layerTintCache[k]);
+    Object.keys(patternedCache).forEach(k => delete patternedCache[k]);
+    Object.keys(recoloredPatternCache).forEach(k => delete recoloredPatternCache[k]);
+  };
+
+  const doClear = () => {
+    categories.forEach(cat => { library[cat] = []; });
+    selected = {};
+    positions = {};
+    colors = {};
+    patterns = {};
+    clearCaches();
+    saveAll();
+    renderCatTabs();
+    renderThumbs();
+    render();
+  };
+  const undoClear = () => {
+    library = JSON.parse(JSON.stringify(oldLibrary));
+    selected = JSON.parse(JSON.stringify(oldSelected));
+    positions = JSON.parse(JSON.stringify(oldPositions));
+    colors = JSON.parse(JSON.stringify(oldColors));
+    patterns = JSON.parse(JSON.stringify(oldPatterns));
+    clearCaches();
+    saveAll();
+    renderCatTabs();
+    renderThumbs();
+    render();
+  };
+
+  doClear();
+  pushUndo({ undo: undoClear, redo: doClear });
+};
+
 document.getElementById('undoBtn').onclick = doUndo;
 document.getElementById('redoBtn').onclick = doRedo;
 window.addEventListener('keydown', (e) => {
@@ -2495,7 +2698,12 @@ window.addEventListener('keydown', (e) => {
 
 document.getElementById('exportBtn').onclick = () => {
   const link = document.createElement('a');
-  link.download = 'outfit.png';
+  let filename = 'character';
+  if(loadedCharacterId && characters[loadedCharacterId]){
+    filename = characters[loadedCharacterId].name || filename;
+  }
+  filename = filename.replace(/[\\/:*?"<>|]/g, '').trim() || 'character';
+  link.download = filename + '.png';
   link.href = canvas.toDataURL('image/png');
   link.click();
 };
