@@ -1166,7 +1166,7 @@ async function getFrontBackLayers(){
     if(!pos){
       const CW = canvas.width, CH = canvas.height;
       const w = img.width, h = img.height;
-      pos = { x: (CW-w)/2, y: (CH-h)/2, w, h };
+      pos = { x: (CW-w)/2, y: CH-h, w, h };
       positions[itemId] = pos;
     }
     if(item.fillDataURL){
@@ -2694,13 +2694,13 @@ document.getElementById('paddingBtn').onclick = (e) => {
 
   const info = document.createElement('div');
   info.className = 'padding-popup-info';
-  info.textContent = '캔버스 바깥으로 여백을 늘려요. 이미 배치된 옷들은 캐릭터와 함께 자동으로 밀려서 위치가 흐트러지지 않아요.';
+  info.textContent = '캔버스 위쪽과 좌우로 여백을 늘려요. 이미 배치된 옷들은 캐릭터와 함께 자동으로 밀려서 위치가 흐트러지지 않아요.';
   pop.appendChild(info);
 
   const grid = document.createElement('div');
   grid.className = 'padding-grid';
 
-  const makeField = (label, key) => {
+  const makeField = (label, keys) => {
     const wrap = document.createElement('label');
     wrap.className = 'padding-field';
     const span = document.createElement('span');
@@ -2709,9 +2709,11 @@ document.getElementById('paddingBtn').onclick = (e) => {
     input.type = 'number';
     input.min = '0';
     input.step = '10';
-    input.value = canvasPadding[key] || 0;
+    input.value = canvasPadding[keys[0]] || 0;
     input.oninput = () => {
-      const next = { ...canvasPadding, [key]: Math.max(0, parseInt(input.value, 10) || 0) };
+      const val = Math.max(0, parseInt(input.value, 10) || 0);
+      const next = { ...canvasPadding };
+      keys.forEach(k => { next[k] = val; });
       applyCanvasPadding(next);
     };
     wrap.appendChild(span);
@@ -2719,10 +2721,8 @@ document.getElementById('paddingBtn').onclick = (e) => {
     return wrap;
   };
 
-  grid.appendChild(makeField('위', 'top'));
-  grid.appendChild(makeField('오른쪽', 'right'));
-  grid.appendChild(makeField('아래', 'bottom'));
-  grid.appendChild(makeField('왼쪽', 'left'));
+  grid.appendChild(makeField('위', ['top']));
+  grid.appendChild(makeField('좌우', ['left', 'right']));
   pop.appendChild(grid);
 
   const resetBtn = document.createElement('button');
